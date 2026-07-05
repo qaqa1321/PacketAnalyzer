@@ -1,4 +1,6 @@
-def detect(packet, flow):
+from engine import PacketData, Flow
+
+def detect(packet: PacketData, flow: Flow):
 
     print('syn_flood 모듈 실행중')
     print(packet.raw_packet)
