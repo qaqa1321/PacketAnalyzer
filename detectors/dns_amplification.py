@@ -28,7 +28,6 @@ def detect(packet: PacketData, flow: Flow):
     ):
 
         print("\n[DNS Amplification 의심됨]")
-        print(f"Victim      : {packet.dst_ip}")
         print(f"{result}")
 
         print("Top DNS Servers")

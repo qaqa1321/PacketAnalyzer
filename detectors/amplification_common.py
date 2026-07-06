@@ -4,6 +4,7 @@ from dataclasses import dataclass
 
 @dataclass
 class AmplificationResult:
+    victim_ip: str
     packet_count: int
     total_bytes: int
     unique_servers: int
@@ -11,6 +12,7 @@ class AmplificationResult:
 
     def __str__(self):
         return (
+            f"Victim: {self.victim_ip}"
             f"Responses: {self.packet_count}"
             f"Traffic: {self.total_bytes:,} Bytes "
             f"DNS Servers: {self.unique_servers} "
@@ -59,6 +61,7 @@ class AmplificationDetector:
             state["total_bytes"] -= oldest.packet_size
 
         return AmplificationResult(
+            victim_ip=victim,
             packet_count=len(state["events"]),
             total_bytes=state["total_bytes"],
             unique_servers=len(state["servers"]),

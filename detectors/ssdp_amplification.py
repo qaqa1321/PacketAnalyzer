@@ -20,7 +20,6 @@ def detect(packet: PacketData, flow: Flow):
     ):
 
         print("\n[SSDP Amplification 의심됨]")
-        print(f"Victim       : {packet.dst_ip}")
         print(f"{result}")
 
         for ip, count in result.top_servers:
