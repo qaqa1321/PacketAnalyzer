@@ -15,7 +15,7 @@ def detect(packet: PacketData, flow: Flow):
     result = detector.add_packet(packet)
 
     if (
-        result.packet_count >= 100
+        result.packet_count >= 80
         or result.total_bytes >= 2_000_000
     ):
 
