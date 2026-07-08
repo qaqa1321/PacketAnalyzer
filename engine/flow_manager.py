@@ -10,8 +10,8 @@ class FlowManager:
 
     def make_flow_key(self, packet):
 
-        endpoint1 = (packet.src_ip, packet.src_port)
-        endpoint2 = (packet.dst_ip, packet.dst_port)
+        endpoint1 = packet.src_ip
+        endpoint2 = packet.dst_ip
 
         endpoint1, endpoint2 = sorted([endpoint1, endpoint2])
 
@@ -35,10 +35,8 @@ class FlowManager:
                 flow_id=self.next_flow_id,
 
                 endpoint1_ip=endpoint1[0],
-                endpoint1_port=endpoint1[1],
 
                 endpoint2_ip=endpoint2[0],
-                endpoint2_port=endpoint2[1],
 
                 protocol=protocol,
 
@@ -61,16 +59,12 @@ class FlowManager:
         flow.recent_packets.append(packet)
 
         # 방향 판별
-        if (
-            packet.src_ip == flow.endpoint1_ip
-            and packet.src_port == flow.endpoint1_port
-        ):
+        if packet.src_ip == flow.endpoint1_ip:
 
             flow.forward_packet_count += 1
             flow.forward_byte_count += packet.packet_size
 
         else:
-
             flow.backward_packet_count += 1
             flow.backward_byte_count += packet.packet_size
 

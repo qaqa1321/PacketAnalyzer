@@ -133,26 +133,24 @@ vscode 우측 상단의 **Run Python File** 버튼을 눌러도 됩니다.
 
 이번에 들어온 **패킷과 관련 있는 패킷들의 묶음** 및 기본적인 통계입니다.
 
-**IP주소와 Port번호가 동일한** 패킷들을 같은 Flow라고 판단합니다.
+**IP주소가 동일한** 패킷들을 같은 Flow라고 판단합니다.
 
 **예시**
+
 ```markdown
 1) 2.2.2.2:70 -> 192.168.0.1:80
 2) 192.168.0.1:80 -> 2.2.2.2:70
 3) 2.2.2.2:70 -> 192.168.0.1:100
 
 위와 같이 통신이 이루어졌다면,
-2번 패킷을 받았을 때 1,2의 정보가 들어있는 flow를 줍니다.
-3번 패킷을 받았을 때의 flow 안에는 3번 패킷의 정보만 들어있습니다.
+3번 패킷을 받았을 때 1,2,3의 정보가 들어있는 flow를 줍니다.
 ```
 
 | **변수명** | **자료형** | **설명** | **사용 예** |
 | --- | --- | --- | --- |
 | flow_id | int | flow 구분자 | `flow.flow_id` |
 | endpoint1_ip | str | 한 쪽의 ip  | `flow.endpoint1_ip` |
-| endpoint1_port | int | 한 쪽의 port 번호 | `flow.endpoint_port` |
 | endpoint2_ip | str | 다른 쪽의 ip  | `flow.endpoint2_ip` |
-| endpoint2_port | int | 다른 쪽의 port 번호 | `flow.endpoint_port` |
 | protocol | str | 프로토콜 (TCP or UDP) | `flow.protocol` |
 | start_time | float | 첫 패킷의 timestamp | `flow.start_time` |
 | last_seen | float | 마지막 패킷의 timestamp(현재 패킷) | `flow.last_seen` |
@@ -166,7 +164,7 @@ vscode 우측 상단의 **Run Python File** 버튼을 눌러도 됩니다.
 | ack_count | int | TCP라면 ack 횟수 | `flow.ack_count` |
 | fin_count | int | TCP라면 fin 횟수 | `flow.fin_count` |
 | rst_count | int | TCP라면 rst 횟수 | `flow.rst_count` |
-| recent_packets | deque | 최신 패킷 30개 리스트 (packet과 동일한 변수 사용 가능) - 더 필요하면 추가 가능. | `flow.recent_packets[0]`  : 가장 오래된 패킷 (30번째 전) <br>`flow.recent_packets[-1]` : 가장 최신 패킷 (현재 패킷) |
+| recent_packets | deque | 최신 패킷 50개 리스트 (packet과 동일한 변수 사용 가능) - 더 필요하면 추가 가능. | `flow.recent_packets[0]`  : 가장 오래된 패킷 (50번째 전)<br>`flow.recent_packets[-1]` : 가장 최신 패킷 (현재 패킷) |
 
 | **메서드명** | **반환 자료형** | **설명** | **사용 예** |
 | --- | --- | --- | --- |
@@ -177,3 +175,5 @@ vscode 우측 상단의 **Run Python File** 버튼을 눌러도 됩니다.
 | forward_ratio | float | endpoint1 → endpoint2 패킷의 비율 | `flow.forward_ratio` |
 | backward_ratio | float | endpoint2 → endpoint1 패킷의 비율 | `flow.backward_ratio` |
 | is_one_way | bool | 한쪽 방향으로만 통신하고 있는지 | `flow.is_one_way` |
+| get_dst_port_counter | Counter | 특정 출발지 IP에 대한 도착지 포트들과 횟수. counter[80] 하면 출발지 ip가 도착지의 80번 포트에 접근한 횟수를 알 수 있음. (**최근 50개 패킷**에 대해서 계산) | `flow.get_dst_port_counter(src_ip)` |
+| get_dst_unique_ports | Set | 특정 출발지 IP에 대한 도착지 포트들의 종류.  (**최근 50개 패킷**에 대해서 계산) | `flow.get_dst_unique_ports(src_ip)` |
