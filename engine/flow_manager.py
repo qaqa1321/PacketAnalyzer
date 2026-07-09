@@ -1,12 +1,16 @@
+from time import time
+
 from engine.flow import Flow
 from engine.packet_context import PacketContext
 
 
 class FlowManager:
 
-    def __init__(self):
+    def __init__(self, flow_timeout=60, recent_window=10.0):
         self.flows = {}
         self.next_flow_id = 1
+        self.flow_timeout = flow_timeout
+        self.recent_window = recent_window
 
     def make_flow_key(self, packet):
 
@@ -24,19 +28,16 @@ class FlowManager:
     def update(self, packet):
 
         key = self.make_flow_key(packet)
-
         flow = self.flows.get(key)
-
+        # Flow 없으면 새로 생성
         if flow is None:
-
             endpoint1, endpoint2, protocol = key
 
             flow = Flow(
                 flow_id=self.next_flow_id,
 
-                endpoint1_ip=endpoint1[0],
-
-                endpoint2_ip=endpoint2[0],
+                endpoint1_ip=endpoint1,
+                endpoint2_ip=endpoint2,
 
                 protocol=protocol,
 
@@ -58,6 +59,14 @@ class FlowManager:
 
         flow.recent_packets.append(packet)
 
+        # window(기본 10초)보다 오래된 패킷 제거
+        while (
+            flow.recent_packets
+            and packet.timestamp - flow.recent_packets[0].timestamp > self.recent_window
+        ):
+            flow.recent_packets.popleft()
+
+        flow.update_statistics()
         # 방향 판별
         if packet.src_ip == flow.endpoint1_ip:
 
@@ -89,3 +98,15 @@ class FlowManager:
             packet=packet,
             flow=flow
         )
+    
+    def remove_inactive_flows(self, current_time, timeout=30):
+        now = current_time
+
+        remove_keys = [
+            key
+            for key, flow in self.flows.items()
+            if now - flow.last_seen > timeout
+        ]
+
+        for key in remove_keys:
+            del self.flows[key]
