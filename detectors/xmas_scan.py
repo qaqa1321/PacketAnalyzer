@@ -18,7 +18,7 @@ def detect(packet: PacketData, flow: Flow):
 
     # NULL Scan 패킷만 검사
     if packet.tcp_flags != "FPU":
-        return
+        return (False, "")
 
     src_ip = packet.src_ip
     dst_port = packet.dst_port
@@ -47,3 +47,6 @@ def detect(packet: PacketData, flow: Flow):
     # 서로 다른 목적지 포트 개수 확인
     if len(state["ports"]) >= THRESHOLD:
         print(f"[ALERT] Xmas Scan Detected ({src_ip})")
+        return (True, "Xmas Scan")
+    
+    return (False, "")

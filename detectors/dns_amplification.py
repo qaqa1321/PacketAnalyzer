@@ -8,13 +8,13 @@ detector = AmplificationDetector(5)
 def detect(packet: PacketData, flow: Flow):
 
     # print("[DNS Amplification Detector]")
-    print(f"  {packet.raw_packet}")
+    # print(f"  {packet.raw_packet}")
     if flow.protocol != "UDP":
-        return
+        return (False, "")
 
     # DNS Response
     if packet.src_port != 53:
-        return
+        return (False, "")
 
     result = detector.add_packet(packet)
 
@@ -25,9 +25,6 @@ def detect(packet: PacketData, flow: Flow):
     ):
 
         print("\n[DNS Amplification 의심됨]")
-        print(f"{result}")
 
-        print("Top DNS Servers")
-
-        for ip, count in result.top_servers:
-            print(f"  {ip:<15} {count} packets")
+        return (True, "DNS Amplification")
+    return (False, "")

@@ -7,10 +7,10 @@ detector = AmplificationDetector(5)
 def detect(packet: PacketData, flow: Flow):
 
     if flow.protocol != "UDP":
-        return
+        return (False, "")
 
     if packet.src_port != 1900:
-        return
+        return (False, "")
 
     result = detector.add_packet(packet)
 
@@ -20,7 +20,8 @@ def detect(packet: PacketData, flow: Flow):
     ):
 
         print("\n[SSDP Amplification 의심됨]")
-        print(f"{result}")
-
-        for ip, count in result.top_servers:
-            print(f"  {ip:<15} {count} packets")
+        
+        return (True, "SSDP Amplification")
+    
+    return (False, "")
+    
