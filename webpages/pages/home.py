@@ -4,12 +4,20 @@ import streamlit as st
 import plotly.express as px
 from datetime import datetime, timedelta
 
+from streamlit_autorefresh import st_autorefresh
+
+st_autorefresh(
+    interval= 1 * 1000,   #3초마다 한번씩 새로고침
+    key="home_refresh"
+)
+
 st.set_page_config(
     page_title="Packet Analyzer",
     layout="wide"
 )
 
-conn = sqlite3.connect("packets.db")
+# conn = sqlite3.connect("packets.db")
+conn = sqlite3.connect(r"C:\Users\RyunK_IT\Documents\vscodeProject\vm_shared\packets.db")
 
 st.title("🛡 Packet Analyzer")
 
@@ -65,25 +73,30 @@ with col4:
 
 st.divider()
 
+
+traffic = packets.copy()
+
+traffic["second"] = traffic["timestamp"].astype(int)
+
+traffic["time"] = pd.to_datetime(
+    traffic["second"],
+    unit="s"
+)
+
 traffic = (
-    packets.groupby("timestamp")
+    traffic
+    .set_index("time")
+    .resample("1s")
     .size()
     .reset_index(name="Packets")
 )
 
 fig = px.line(
     traffic,
-    x="timestamp",
+    x="time",
     y="Packets",
     markers=True
 )
-
-fig.update_layout(
-    xaxis_title="Time",
-    yaxis_title="Packets/sec",
-    height=350
-)
-
 st.plotly_chart(fig, width='stretch')
 
 left, right = st.columns(2)
