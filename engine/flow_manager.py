@@ -64,6 +64,7 @@ class FlowManager:
         ):
             flow.recent_packets.popleft()
 
+        flow.update_statistics()
         # 방향 판별
         if packet.src_ip == flow.endpoint1_ip:
 

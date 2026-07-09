@@ -76,7 +76,7 @@ class PacketProcessor:
         while True:
             raw_packet = self.packet_queue.get()
             packet = self.process_packet(raw_packet)
-
+            
             if packet is None:
                 continue
 

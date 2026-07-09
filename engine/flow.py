@@ -37,6 +37,9 @@ class Flow:
     # 최근 패킷
     recent_packets: deque = field(default_factory=deque)
 
+    static_pps: float = 0.0
+    static_bps: float = 0.0
+
 
     # ---------- 계산 속성 ----------
 
@@ -50,11 +53,7 @@ class Flow:
         """
         최근 1초 동안의 Packets 수
         """
-        return sum(
-            1
-            for packet in self.recent_packets
-            if packet.timestamp >= self.last_seen - 1
-        )
+        return self.static_pps
 
     @property
     def bps(self) -> float:
@@ -62,11 +61,7 @@ class Flow:
         if self.duration == 0:
             return float(self.byte_count)
 
-        return sum(
-            packet.packet_size
-            for packet in self.recent_packets
-            if packet.timestamp >= self.last_seen - 1
-        )
+        return self.static_bps
 
     @property
     def avg_packet_size(self) -> float:
@@ -147,11 +142,10 @@ class Flow:
             
             if packet.timestamp < self.last_seen - seconds:
                 continue
-
-            for flag in packet.tcp_flags:
-                if not packet.tcp_flags:
-                    counter["N"] += 1
-                else:
+            if not packet.tcp_flags:
+                counter["N"] += 1
+            else: 
+                for flag in packet.tcp_flags:
                     counter[flag] += 1
 
         return counter
@@ -170,3 +164,16 @@ class Flow:
             and (packet.tcp_flags or "") == flag
             and packet.timestamp >= self.last_seen - seconds
         ]
+    
+    def update_statistics(self):
+        self.static_pps = sum(
+            1
+            for packet in self.recent_packets
+            if packet.timestamp >= self.last_seen - 1
+        )
+
+        self.static_bps = sum(
+            packet.packet_size
+            for packet in self.recent_packets
+            if packet.timestamp >= self.last_seen - 1
+        )
