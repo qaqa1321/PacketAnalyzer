@@ -22,4 +22,5 @@ def detect(packet:  PacketData, flow: Flow):
         print(datetime.fromtimestamp(packet.timestamp), packet.src_ip)
         print(f"총 패킷 중 fin 비율: {fin_ratio:.2f}")
         print ("FIN Flood 공격을 받고 있습니다.")
+        return(True,"FIN Flood")
     return(False, "")

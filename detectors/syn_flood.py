@@ -30,4 +30,5 @@ def detect(packet:  PacketData, flow: Flow):
         print(datetime.fromtimestamp(packet.timestamp), packet.src_ip)
         print(f"총 패킷 중 syn 비율: {syn_ratio:.2f}")
         print("SYN Flood 공격을 받고 있습니다.")
+        return(True,"SYN Flood")
     return (False,"")

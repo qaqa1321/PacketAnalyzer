@@ -22,4 +22,5 @@ def detect(packet:  PacketData, flow: Flow):
         print(datetime.fromtimestamp(packet.timestamp), packet.src_ip)
         print(f"총 패킷 중 ack 비율: {ack_ratio:.2f}")
         print ("ACK Flood 공격을 받고 있습니다.")
+        return(True,"ACK Flood")
     return(False, "")
