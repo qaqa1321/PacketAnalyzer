@@ -1,90 +1,109 @@
-import bisect
-import ipaddress
-import os
+
 import pandas as pd
+import plotly.express as px
 import streamlit as st
+import sys
+from pathlib import Path
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__)) 
-IPV4_CSV_PATH = os.path.normpath(os.path.join(BASE_DIR,"ipv4.csv"))
-COUNTRIES_CSV_PATH = os.path.normpath(os.path.join(BASE_DIR,"countries.csv"))
+# pages 폴더의 상위 폴더(webpages)를 import 경로에 추가
+sys.path.append(str(Path(__file__).resolve().parent.parent))
+from _dbsource import get_ip_list_from_db
+from _geoprocess import (
+    ANOMALOUS_SOURCE_STATUSES,
+    STATUS_LABELS,
+    build_index,
+    lookup_ips,
+)
 
-
-@st.cache_data
-def load_index():
-    """ipv4.csv, countries.csv를 불러와 이진 탐색용으로 정렬/인덱싱"""
-    ipv4_df = pd.read_csv(IPV4_CSV_PATH)
-    
-    ipv4_df["start_int"] = ipv4_df["start_ip"].apply(lambda x: int(ipaddress.IPv4Address(x)))
-    ipv4_df["end_int"] = ipv4_df["end_ip"].apply(lambda x: int(ipaddress.IPv4Address(x)))
-    ipv4_df = ipv4_df.sort_values("start_int").reset_index(drop=True)
-
-    start_list = ipv4_df["start_int"].tolist()
-    end_list = ipv4_df["end_int"].tolist()
-    country_list = ipv4_df["country_code"].tolist()
-
-    countries_df = pd.read_csv(COUNTRIES_CSV_PATH)
-    # 컬럼명 공백/대소문자 차이로 인한 KeyError 방지
-    countries_df.columns = countries_df.columns.str.strip().str.lower()
-
-    return start_list, end_list, country_list, countries_df
+st.set_page_config(page_title="IP 접속 위치 대시보드", layout="wide")
 
 
-def _find_column(df: pd.DataFrame, candidates: list[str]) -> str:
-    """df.columns 중 candidates 후보군과 일치하는 컬럼명을 찾아 반환.
-    못 찾으면 실제 컬럼 목록을 포함한 에러를 발생시킴."""
-    for name in candidates:
-        if name in df.columns:
-            return name
-    raise KeyError(
-        f"{candidates} 중 일치하는 컬럼을 찾을 수 없습니다. "
-        f"실제 컬럼: {df.columns.tolist()}"
+@st.cache_resource
+def get_index():
+    return build_index()
+
+
+@st.cache_data(ttl=5)
+def load_geo_data() -> pd.DataFrame:
+    """DB에서 IP 목록을 가져와 status/위경도까지 붙인 DataFrame 반환.
+    ttl=5: 5초마다 DB를 다시 조회 (필요에 맞게 조정)"""
+    index = get_index()
+    ip_list = get_ip_list_from_db()
+    return lookup_ips(index, ip_list)
+
+
+st.title("IP 접속 위치 대시보드")
+
+if st.button("새로고침"):
+    load_geo_data.clear()
+
+df = load_geo_data()
+df["status_label"] = df["status"].map(STATUS_LABELS).fillna(df["status"])
+
+ok_df = df[df["status"] == "ok"]
+private_df = df[df["status"] == "private"]
+anomalous_df = df[df["status"].isin(ANOMALOUS_SOURCE_STATUSES)]
+
+# ---------------- 상단 요약 지표 ----------------
+col1, col2, col3, col4 = st.columns(4)
+col1.metric("총 로그 건수", len(df))
+col2.metric("위치 확인(공인 IP)", len(ok_df))
+col3.metric("내부망(사설 IP)", len(private_df))
+col4.metric("스푸핑 의심(Class D/E)", len(anomalous_df), delta_color="inverse")
+
+if len(anomalous_df) > 0:
+    st.error(
+        f"⚠ 출발지 IP가 멀티캐스트(Class D)/예약대역(Class E)인 로그 {len(anomalous_df)}건 발견 "
+        "— 실제 트래픽에서는 나올 수 없는 대역이므로 스푸핑/패킷 조작 가능성이 있습니다."
     )
 
+# ---------------- 지도 (공인 IP만) ----------------
+st.subheader("공인 IP 위치 지도")
+if ok_df.empty:
+    st.info("지도에 표시할 공인 IP 위치 정보가 없습니다.")
+else:
+    count_df = (
+        ok_df.groupby(["country_code", "country_name", "latitude", "longitude"])
+        .size()
+        .reset_index(name="count")
+    )
 
-def get_ip_location(ip: str):
-    """IP를 받아 (국가코드, 위도, 경도)를 반환. 못 찾으면 None."""
-    start_list, end_list, country_list, countries_df = load_index()
+    map_tab, geo_tab, bar_tab = st.tabs(["st.map", "Plotly scatter_geo", "국가별 건수"])
 
-    try:
-        target_ip_int = int(ipaddress.IPv4Address(ip))
-    except ValueError:
-        return None
+    with map_tab:
+        st.map(ok_df.rename(columns={"latitude": "lat", "longitude": "lon"}), zoom=1)
 
-    idx = bisect.bisect_right(start_list, target_ip_int) - 1
-    if idx < 0 or not (start_list[idx] <= target_ip_int <= end_list[idx]):
-        return None
+    with geo_tab:
+        fig_geo = px.scatter_geo(
+            count_df, lat="latitude", lon="longitude", size="count",
+            hover_name="country_name", projection="natural earth",
+        )
+        st.plotly_chart(fig_geo, use_container_width=True)
 
-    country_code = country_list[idx]
+    with bar_tab:
+        fig_bar = px.bar(
+            count_df.sort_values("count", ascending=False),
+            x="country_name", y="count", text="count",
+        )
+        st.plotly_chart(fig_bar, use_container_width=True)
 
-    iso_col = _find_column(countries_df, ["iso", "iso2", "iso_a2", "country_code", "code"])
-    lat_col = _find_column(countries_df, ["latitude", "lat"])
-    lon_col = _find_column(countries_df, ["longitude", "lon", "lng"])
+# ---------------- 상태별 분포 (사설망 / 이상 / 기타) ----------------
+st.subheader("IP 상태별 분포")
+status_count_df = df["status_label"].value_counts().reset_index()
+status_count_df.columns = ["status_label", "count"]
+fig_status = px.bar(status_count_df, x="status_label", y="count", text="count")
+st.plotly_chart(fig_status, use_container_width=True)
 
-    matched = countries_df[countries_df[iso_col] == country_code]
-    if matched.empty:
-        return None
+# ---------------- 이상 징후(스푸핑 의심) 로그 상세 ----------------
+if not anomalous_df.empty:
+    st.subheader("스푸핑/조작 의심 로그 (Class D/E)")
+    st.dataframe(anomalous_df[["ip", "status_label"]], use_container_width=True)
 
-    latitude = matched.iloc[0][lat_col]
-    longitude = matched.iloc[0][lon_col]
-    return country_code, latitude, longitude
+# ---------------- 내부망 로그 상세 ----------------
+if not private_df.empty:
+    st.subheader("내부망(사설 IP) 로그")
+    st.dataframe(private_df[["ip", "status_label"]], use_container_width=True)
 
-
-# ---------------- Streamlit UI ----------------
-st.title("IP 국가 위치 조회")
-
-
-
-target_ip = st.text_input("조회할 IP를 입력하세요", value="14.102.130.5")
-
-if st.button("조회"):
-    result = get_ip_location(target_ip)
-
-    if result is None:
-        st.error(f"'{target_ip}'에 대한 국가/위치 정보를 찾을 수 없습니다.")
-    else:
-        country_code, latitude, longitude = result
-        st.success(f"IP: {target_ip} -> 국가코드(ISO): {country_code}")
-        st.write(f"위도: {latitude}, 경도: {longitude}")
-
-        map_df = pd.DataFrame({"lat": [latitude], "lon": [longitude]})
-        st.map(map_df, zoom=3)
+# ---------------- 원본 데이터 ----------------
+with st.expander("전체 원본 데이터 보기"):
+    st.dataframe(df, use_container_width=True)
