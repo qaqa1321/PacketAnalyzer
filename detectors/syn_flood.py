@@ -6,13 +6,7 @@ def detect(packet:  PacketData, flow: Flow):
     """
     SYN Flood 공격을 받을 때 탐지
     """
-    print("+++++++++++++++++++++++++++++++++++++++++++++++++++++++")
-    print(
-    f"받는 플래그 ={packet.tcp_flags} | "
-    f"S={len(flow.get_recent_packets_by_flag(seconds=10, flag='S'))} "
-    f"A={len(flow.get_recent_packets_by_flag(seconds=10, flag='A'))} "
-    f"F={len(flow.get_recent_packets_by_flag(seconds=10, flag='F'))}")
-
+    
     print(flow.packet_count)
     
     condition= flood_conditions(flow)
