@@ -84,7 +84,7 @@ class PacketProcessor:
             context = self.flow_manager.update(packet)
 
             if time.time() - self.last_flow_cleanup >= 5:
-                self.flow_manager.remove_inactive_flows(current_time=packet.timestamp, timeout=30)
+                self.flow_manager.remove_inactive_flows(current_time=packet.timestamp, db=self.db_module)
                 self.last_flow_cleanup = time.time()
 
             self.db_module.insert_packet_table(

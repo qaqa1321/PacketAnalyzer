@@ -1,3 +1,5 @@
 scapy
 pysqlite3
 streamlit
+plotly
+streamlit-autorefresh
