@@ -76,10 +76,14 @@ class PacketProcessor:
         last_flush = time.time()
         while True:
             raw_packet = self.packet_queue.get()
+            
             packet = self.process_packet(raw_packet)
             
             if packet is None:
                 continue
+
+            if packet.dst_port == 22 or packet.src_port == 22:
+                return
 
             context = self.flow_manager.update(packet)
 
