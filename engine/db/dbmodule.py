@@ -9,6 +9,7 @@ class DBModule:
     def __init__(self):
         self.conn = sqlite3.connect("packets.db")
         self.cursor = self.conn.cursor()
+        self.conn.execute("PRAGMA journal_mode=WAL")
         self.packet = PacketRepo(self)
         self.flow = FlowRepo(self)
         self.warnig_repo = WarningRepo(self)
