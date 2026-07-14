@@ -34,3 +34,18 @@ class BlackWhiteRepo:
             INSERT INTO black_list (timestamp, ip, accepted)
             VALUES (?, ?, ?)
         ''', (time.time(), ip, 1 if accepted == True else 0))
+    
+    def get_notaccepted_blacklist(self):
+        self.db.cursor.execute('''
+            SELECT * FROM black_list
+            where accepted = ?;
+        ''', (0,))
+        return self.db.cursor.fetchall()
+    
+    def get_notaccepted_whitelist(self):
+        self.db.cursor.execute('''
+            SELECT * FROM white_list
+            where accepted = ?;
+        ''', (0,))
+        return self.db.cursor.fetchall()
+    
