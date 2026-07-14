@@ -5,6 +5,7 @@ import streamlit as st
 import sys
 from pathlib import Path
 from streamlit_autorefresh import st_autorefresh
+import pycountry
 
 # pages 폴더의 상위 폴더(webpages)를 import 경로에 추가
 sys.path.append(str(Path(__file__).resolve().parent.parent))
@@ -63,13 +64,22 @@ else:
         .sort_values("count", ascending=False)
         .reset_index(drop=True)
     )
+    # 2. Global converter function
+    def safe_iso3(iso2):
+        try:
+            return pycountry.countries.get(alpha_2=iso2).alpha_3
+        except (LookupError, AttributeError):
+            return None
 
+    count_df["iso3_code"] = count_df["country_code"].apply(safe_iso3)
+
+    # geoIP settings
     fig_geo = go.Figure(
         data=go.Choropleth(
-            locations=count_df["country_name"],
-            locationmode="country names",  # DB에 ISO-3 코드가 없어도 국가명으로 매칭
+            locations=count_df["iso3_code"],
+            locationmode="ISO-3",  # DB에 ISO-3 코드가 없어도 국가명으로 매칭
             z=count_df["count"],
-            text=count_df["country_name"],
+            text=count_df["iso3_code"],
             colorscale=[
                 [0.0, "#fde8e8"],
                 [0.3, "#f8b4b4"],
