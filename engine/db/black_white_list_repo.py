@@ -35,17 +35,37 @@ class BlackWhiteRepo:
             VALUES (?, ?, ?)
         ''', (time.time(), ip, 1 if accepted == True else 0))
     
-    def get_notaccepted_blacklist(self):
-        self.db.cursor.execute('''
-            SELECT * FROM black_list
-            where accepted = ?;
-        ''', (0,))
+    def get_pending_rules(self, table: str):
+        self.db.cursor.execute(f"""
+            SELECT id, ip
+            FROM {table}
+            WHERE accepted = 0
+        """)
         return self.db.cursor.fetchall()
-    
-    def get_notaccepted_whitelist(self):
-        self.db.cursor.execute('''
-            SELECT * FROM white_list
-            where accepted = ?;
-        ''', (0,))
+
+
+    def get_delete_rules(self, table: str):
+        self.db.cursor.execute(f"""
+            SELECT id, ip
+            FROM {table}
+            WHERE accepted = 2
+        """)
         return self.db.cursor.fetchall()
+
+
+    def accept_rule(self, table: str, rule_id: int):
+        self.db.cursor.execute(f"""
+            UPDATE {table}
+            SET accepted = 1
+            WHERE id = ?
+        """, (rule_id,))
+        self.db.conn.commit()
+
+
+    def delete_rule(self, table: str, rule_id: int):
+        self.db.cursor.execute(f"""
+            DELETE FROM {table}
+            WHERE id = ?
+        """, (rule_id,))
+        self.db.conn.commit()
     
