@@ -21,6 +21,12 @@ from _geoprocess import (
 
 st.set_page_config(page_title="IP 접속 위치 대시보드", layout="wide")
 
+from webpages.css.st_header import _setting
+from webpages.css.st_glass import liquid_glass
+
+_setting()
+liquid_glass()
+
 REFRESH_INTERVAL_SECONDS = 5
  
 st_autorefresh(interval=REFRESH_INTERVAL_SECONDS * 1000, key="auto_refresh")
@@ -83,12 +89,12 @@ else:
             z=count_df["count"],
             text=count_df["iso3_code"],
             colorscale=[
-                [0.0, "#fde8e8"],
-                [0.3, "#f8b4b4"],
-                [0.6, "#f05252"],
-                [1.0, "#9b1c1c"],
+                [0.0, "#5C1F1F"],
+                [0.3, "#8F2424"],
+                [0.6, "#C62828"],
+                [1.0, "#FF6B6B"],
             ],
-            marker_line_color="rgba(255,255,255,0.6)",
+            marker_line_color="rgba(255,255,255,0.25)",
             marker_line_width=0.5,
             colorbar=dict(# 지도 범례
     title=dict(text="Packets", side="top"),
@@ -111,11 +117,11 @@ else:
         domain=dict(x=[0, 0.9], y=[0, 1]),
         projection_type="equirectangular",
         showland=True,
-        landcolor="#d6e6fc",
+        landcolor="#1E2A3A",
         showocean=True,
-        oceancolor="#ffffff",
+        oceancolor="rgba(0,0,0,0)",
         showcountries=True,
-        countrycolor="rgba(200,200,200,0.4)",
+        countrycolor="rgba(255,255,255,0.15)",
         bgcolor="rgba(0,0,0,0)",
     )
     fig_geo.update_layout(
@@ -123,7 +129,7 @@ else:
         height=500,
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
-        font=dict(family="Inter, sans-serif", size=12, color="#374151"),
+        font=dict(family="Inter, sans-serif", size=12, color="#C7CBD1"),
     )
     TOP_N = 6
     pie_df = count_df[["country_name", "count"]].copy()
@@ -149,20 +155,20 @@ else:
             labels=pie_df["country_name"],
             values=pie_df["count"],
             hole=0.55,  # 도넛 형태
-            marker=dict(line=dict(color="#ffffff", width=2)),
+            marker=dict(line=dict(color="#0D1420", width=2)),
             textinfo="none",  # 조각 위 텍스트는 생략, 대신 hover로만 표시
             hovertemplate="<b>%{label}</b><br>%{value:,}건 (%{percent})<extra></extra>",
         )
     )
     fig_pie.update_layout(
-        title=dict(text="Top Countries", font=dict(size=13, color="#374151")),
+        title=dict(text="Top Countries", font=dict(size=13, color="#C7CBD1")),
         margin=dict(l=0, r=0, t=30, b=0),
         height=500,
         showlegend=True,
         legend=dict(orientation="v", font=dict(size=11)),
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
-        font=dict(family="Inter, sans-serif", color="#374151"),
+        font=dict(family="Inter, sans-serif", color="#C7CBD1"),
     )
  
     col_map, col_pie = st.columns([3, 1], gap="small")  # 지도 : 파이차트 비율 (필요시 숫자 조절)

@@ -117,6 +117,11 @@ def fetch_all_ips(table: str, ip_column: str = "ip", exclude_accepted_2: bool = 
 # -----------------------------
 st.set_page_config(page_title="IP Search", layout="centered")
 
+from webpages.css.st_header import _setting
+from webpages.css.st_glass import liquid_glass
+
+_setting()
+liquid_glass()
 
 st.markdown("""
 <h1 style="

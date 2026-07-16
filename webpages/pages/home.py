@@ -14,6 +14,7 @@ kst = timezone(timedelta(hours=9))
 from  webpages.css.st_header import _setting
 from  webpages.css.st_metric import metric_cards
 from  webpages.css.st_alertbox import alret_box_style
+from  webpages.css.st_glass import liquid_glass
 
 st_autorefresh(
     interval= 1 * 1000,   #1초마다 한번씩 새로고침
@@ -113,6 +114,7 @@ def check_new_warning():
 
 
 metric_cards()
+liquid_glass()
 
 # packet_size 합계 (바이트 단위라고 가정)
 total_bytes = packets["packet_size"].sum()
@@ -179,9 +181,18 @@ fig = px.line(
     markers=True
 )
 
+fig.update_traces(
+    line=dict(color="#4FC3F7", width=2.5),
+    marker=dict(size=5, color="#B3E5FC"),
+    fill="tozeroy",
+    fillcolor="rgba(79, 195, 247, 0.18)",
+)
+
 fig.update_layout(
     height = 200,
     margin=dict(l=20, r=20, t=20, b=20),
+    paper_bgcolor="rgba(0,0,0,0)",
+    plot_bgcolor="rgba(0,0,0,0)",
 )
 
 st.plotly_chart(fig, width='stretch')
@@ -206,25 +217,31 @@ with left:
         y="Protocol",
         orientation="h",
         color="Protocol",
-        text="Count"
+        text="Count",
+        color_discrete_map={
+            "TCP": "#4A90E2",
+            "UDP": "#2EC4A5",
+            "OTHER": "#8B95A5"
+        }
     )
 
-    fig.update_traces(textposition="outside")
+    # cliponaxis=False : 막대 끝 텍스트가 플롯 영역 밖으로 나가도 잘리지 않음
+    fig.update_traces(textposition="outside", cliponaxis=False)
+
+    # 막대가 가장 길 때도 숫자가 들어갈 자리가 생기도록 x축에 여유를 준다
+    if len(proto):
+        fig.update_xaxes(range=[0, proto["Count"].max() * 1.18])
 
     fig.update_layout(
         xaxis_title="Packets",
         yaxis_title=None,
         height=200,
-        width=70,
-        showlegend=False
+        showlegend=False,
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
     )
 
-    left_margin, graph, right_margin = st.columns([0.3, 9, 0.7])
-
-    with graph:
-        st.plotly_chart(fig, width="stretch")
-
-    # st.plotly_chart(fig, width="stretch")
+    st.plotly_chart(fig, width="stretch")
 
   
 alret_box_style()
