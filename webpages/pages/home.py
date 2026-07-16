@@ -215,7 +215,7 @@ with left:
         xaxis_title="Packets",
         yaxis_title=None,
         height=200,
-        width=70,
+        width=50,
         showlegend=False
     )
 
