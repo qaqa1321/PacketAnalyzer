@@ -86,11 +86,30 @@ async def _generate_tts(text: str, voice: str) -> bytes:
     mp3_fp.seek(0)
     return mp3_fp.read()
 
+# def check_new_warning():
+#     if warnings is None or warnings.empty:
+#         return
+
+#     latest_ts = warnings["last_timestamp"].iloc[0]
+#     now_ts = time.time()
+
+#     if "last_flashed_ts" not in st.session_state:
+#         st.session_state.last_flashed_ts = None
+
+#     is_new = (
+#         (now_ts - latest_ts)
+#     ) < 5 and latest_ts != st.session_state.last_flashed_ts
+################################################################
 def check_new_warning():
-    if warnings is None or warnings.empty:
+    current_warnings = (
+        st.session_state.mock_warnings
+        if "mock_warnings" in st.session_state
+        else warnings
+    )
+    if current_warnings is None or current_warnings.empty:
         return
 
-    latest_ts = warnings["last_timestamp"].iloc[0]
+    latest_ts = current_warnings["last_timestamp"].iloc[0]
     now_ts = time.time()
 
     if "last_flashed_ts" not in st.session_state:
@@ -99,7 +118,7 @@ def check_new_warning():
     is_new = (
         (now_ts - latest_ts)
     ) < 5 and latest_ts != st.session_state.last_flashed_ts
-
+####################################################################
     if is_new:
         st.session_state.last_flashed_ts = latest_ts
 
@@ -123,7 +142,8 @@ def check_new_warning():
         <div class="flash-overlay"></div>
         """, unsafe_allow_html=True)
 
-        attack_type = warnings["attack_type"].iloc[0]
+        # attack_type = warnings["attack_type"].iloc[0]
+        attack_type = current_warnings["attack_type"].iloc[0]
         alert_text = f"긴급 경고. {attack_type} 공격 발생. 긴급 경고. {attack_type} 공격 발생."
 
         # 2. 구글 TTS 기본 오디오 바이너리 생성
@@ -295,3 +315,40 @@ with voice_col2:
     ):
         st.session_state.alert_voice_gender = "male"
         st.rerun()
+
+# ========================================================
+# 🧪 [테스트 전용] 완벽히 연동되는 가상 공격 트리거 버튼
+# ========================================================
+st.sidebar.subheader("🧪 TTS 알람 테스트 베드")
+
+# 테스트하고 싶은 공격 유형 선택박스
+test_attack = st.sidebar.selectbox(
+    "테스트할 공격 선택", ["syn flood", "port scan", "ddos", "sql injection"]
+)
+
+# 트리거 작동 버튼
+if st.sidebar.button("🚨 가상 공격 트리거 (테스트)"):
+    import pandas as pd
+
+    # 1. 현재 시각 타임스탬프(epoch) 생성
+    current_time_epoch = time.time()
+
+    # 2. 가상 경고 데이터 행 생성
+    new_row = pd.DataFrame(
+        {"last_timestamp": [current_time_epoch], "attack_type": [test_attack]}
+    )
+
+    # 3. 세션 상태(st.session_state)에 가상 데이터 영구 보존 및 병합
+    if "mock_warnings" not in st.session_state:
+        st.session_state.mock_warnings = pd.concat(
+            [new_row, warnings], ignore_index=True
+        )
+    else:
+        st.session_state.mock_warnings = pd.concat(
+            [new_row, st.session_state.mock_warnings], ignore_index=True
+        )
+
+    # 4. 주입 성공 메시지 출력 후 화면을 즉시 강제 새로고침(rerun)
+    st.sidebar.success(f"'{test_attack}' 데이터 주입 성공!")
+    st.rerun()
+
