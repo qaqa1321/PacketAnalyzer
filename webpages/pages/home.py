@@ -1,87 +1,109 @@
 import sqlite3
-import pandas as pd
-import streamlit as st
-import plotly.express as px
-from datetime import datetime, timezone, timedelta
 import time
-
+from datetime import datetime, timedelta, timezone
+import pandas as pd
+import plotly.express as px
+import streamlit as st
 from streamlit_autorefresh import st_autorefresh
+from webpages.css.st_alertbox import alret_box_style
+from webpages.css.st_header import _setting
+from webpages.css.st_metric import metric_cards
+from webpages.functions.titles import get_h2
 
-from webpages.functions.titles  import get_h2
+import base64
+import io
+import time
+import asyncio
+import streamlit.components.v1 as components
+import edge_tts
 
 kst = timezone(timedelta(hours=9))
 
-from  webpages.css.st_header import _setting
-from  webpages.css.st_metric import metric_cards
-from  webpages.css.st_alertbox import alret_box_style
+# 10초마다 자동으로 화면을 새로고침하여 최신 패킷 갱신
+st_autorefresh(interval=10 * 1000, key="home_refresh")
 
-st_autorefresh(
-    interval= 1 * 1000,   #1초마다 한번씩 새로고침
-    key="home_refresh"
-)
-
-st.set_page_config(
-    page_title="Packet Analyzer",
-    layout="wide"
-)
+st.set_page_config(page_title="Packet Analyzer", layout="wide")
 
 conn = sqlite3.connect("packets.db")
-# conn = sqlite3.connect(r"C:\Users\RyunK_IT\Documents\vscodeProject\vm_shared\packets.db")
-
 _setting()
 
-st.markdown("""
-<h1 style="
-    font-size:28px;
-    margin:0;
-">
-Home
-</h1>
-""", unsafe_allow_html=True)
+st.markdown(
+    """
+<h1 style="font-size:28px; margin:0;">Home</h1>
+""",
+    unsafe_allow_html=True,
+)
 
 ########################################################
-# 최근 60초 데이터
+# 최근 60초 데이터 및 경고 데이터 가져오기
 ########################################################
-
 now = int(datetime.now().timestamp())
 start = now - 60
 one_day_ago = int((datetime.now() - timedelta(days=1)).timestamp())
 
-packets = pd.read_sql_query("""
+packets = pd.read_sql_query(
+    """
 SELECT *
 FROM packets
 WHERE timestamp >= ?
-""", conn, params=(start,))
+""",
+    conn,
+    params=(start,),
+)
 
-warnings = pd.read_sql_query("""
+warnings = pd.read_sql_query(
+    """
 SELECT *
 FROM warnings
 ORDER BY last_timestamp DESC
 LIMIT 5
-""", conn)
+""",
+    conn,
+)
 
-warnings_cnt = pd.read_sql_query("""
+warnings_cnt = pd.read_sql_query(
+    """
 SELECT count(*) as cnt
 FROM warnings
-""", conn)
+""",
+    conn,
+)
 
+VOICE_MAP = {
+    "female": "ko-KR-SunHiNeural",
+    "male": "ko-KR-InJoonNeural",
+}
+
+if "alert_voice_gender" not in st.session_state:
+    st.session_state.alert_voice_gender = "female"
+
+async def _generate_tts(text: str, voice: str) -> bytes:
+    communicate = edge_tts.Communicate(text, voice)
+    mp3_fp = io.BytesIO()
+    async for chunk in communicate.stream():
+        if chunk["type"] == "audio":
+            mp3_fp.write(chunk["data"])
+    mp3_fp.seek(0)
+    return mp3_fp.read()
 
 def check_new_warning():
+    if warnings is None or warnings.empty:
+        return
 
-    latest_ts = warnings["last_timestamp"].iloc[0]  # 숫자 값 그대로 사용
-    now_ts = time.time()  # 현재 시각도 숫자(epoch)로
+    latest_ts = warnings["last_timestamp"].iloc[0]
+    now_ts = time.time()
 
     if "last_flashed_ts" not in st.session_state:
         st.session_state.last_flashed_ts = None
 
     is_new = (
-        (now_ts - latest_ts) < 5
-        and latest_ts != st.session_state.last_flashed_ts
-    )
+        (now_ts - latest_ts)
+    ) < 5 and latest_ts != st.session_state.last_flashed_ts
 
     if is_new:
         st.session_state.last_flashed_ts = latest_ts
 
+        # 1. 붉은 화면 섬광 CSS 효과 (기존과 동일, 그대로 둠)
         st.markdown("""
         <style>
         @keyframes flash-red-fade {
@@ -101,244 +123,175 @@ def check_new_warning():
         <div class="flash-overlay"></div>
         """, unsafe_allow_html=True)
 
+        attack_type = warnings["attack_type"].iloc[0]
+        alert_text = f"긴급 경고. {attack_type} 공격 발생. 긴급 경고. {attack_type} 공격 발생."
+
+        # 2. 구글 TTS 기본 오디오 바이너리 생성
+        selected_voice = VOICE_MAP.get(st.session_state.alert_voice_gender, VOICE_MAP["female"])
+        audio_bytes = asyncio.run(_generate_tts(alert_text, voice=selected_voice))
+
+        # 3. 배속 재생 (여기부터 교체된 부분)
+        try:
+            b64_audio = base64.b64encode(audio_bytes).decode()
+            speed_factor = 1.4
+
+            components.html(
+                f"""
+                <audio id="speedy-alert-audio" autoplay style="display:none;">
+                    <source src="data:audio/mp3;base64,{b64_audio}" type="audio/mp3">
+                </audio>
+                <script>
+                    const audio = document.getElementById("speedy-alert-audio");
+
+                    function applySpeed() {{
+                        audio.playbackRate = {speed_factor};
+                        audio.preservesPitch = false;
+                    }}
+
+                    audio.addEventListener("loadedmetadata", applySpeed);
+                    audio.addEventListener("canplay", applySpeed);
+                    audio.addEventListener("play", applySpeed);
+
+                    audio.play().then(applySpeed).catch((e) => console.log("autoplay blocked:", e));
+                    setTimeout(applySpeed, 100);
+                    setTimeout(applySpeed, 300);
+                </script>
+                """,
+                height=0,
+            )
+        except Exception as e:
+            st.error(f"알람 재생 실패: {e}")
+
+
+
+
+
+
+# 경고 탐지 로직 실행
+check_new_warning()
+
 ########################################################
-# KPI
+# 대시보드 KPI 및 그래프 영역 (기존 코드 유지)
 ########################################################
-
-# components.iframe(
-#     "http://localhost:3000/d/adnpnxq/new-dashboard?orgId=1&from=now-1m&to=now&timezone=browser&refresh=5s&kiosk",
-#     height=600,
-#     scrolling=True
-# )
-
-
 metric_cards()
-
-# packet_size 합계 (바이트 단위라고 가정)
 total_bytes = packets["packet_size"].sum()
-
-# bps 계산 (비트 단위)
 bps = (total_bytes * 8) / 60
 
 col1, col2, col3, col4, col5 = st.columns(5)
-
 with col1:
-    st.metric(
-        "분당 패킷 수",
-        len(packets)
-    )
-
+    st.metric("분당 패킷 수", len(packets))
 with col2:
-    st.metric(
-        "PPS",
-        round(len(packets)/60, 1)
-    )
-
+    st.metric("PPS", round(len(packets) / 60, 1))
 with col3:
-    st.metric(
-        "BPS",
-        f"{bps/1000:.1f} Kbps"
-    )
-
+    st.metric("BPS", f"{bps/1000:.1f} Kbps")
 with col4:
-    st.metric(
-        "Warnings",
-        warnings_cnt['cnt']
-    )
-
+    st.metric("Warnings", warnings_cnt["cnt"].iloc[0])
 with col5:
-    st.metric(
-        "활성 IP",
-        packets["src_ip"].nunique()
-    )
-
-# st.divider()
-
+    st.metric("활성 IP", packets["src_ip"].nunique() if not packets.empty else 0)
 
 traffic = packets.copy()
-
-traffic["second"] = traffic["timestamp"].astype(int)
-
-traffic["time"] = pd.to_datetime(
-    traffic["second"],
-    unit="s"
-)
-
-traffic = (
-    traffic
-    .set_index("time")
-    .resample("1s")
-    .size()
-    .reset_index(name="Packets")
-)
-
-fig = px.line(
-    traffic,
-    x="time",
-    y="Packets",
-    markers=True
-)
-
-fig.update_layout(
-    height = 200,
-    margin=dict(l=20, r=20, t=20, b=20),
-)
-
-st.plotly_chart(fig, width='stretch')
+if not traffic.empty:
+    traffic["second"] = traffic["timestamp"].astype(int)
+    traffic["time"] = pd.to_datetime(traffic["second"], unit="s")
+    traffic = (
+        traffic.set_index("time").resample("1s").size().reset_index(name="Packets")
+    )
+    fig = px.line(traffic, x="time", y="Packets", markers=True)
+    fig.update_layout(height=200, margin=dict(l=20, r=20, t=20, b=20))
+    st.plotly_chart(fig, width="stretch")
 
 left, right = st.columns(2)
 with left:
-
     st.markdown(get_h2("프로토콜 비율"), unsafe_allow_html=True)
-
-    proto = (
-        packets["protocol"]
-        .value_counts()
-        .reset_index()
-    )
-
-    proto.columns = ["Protocol", "Count"]
-
-
-    fig = px.bar(
-        proto,
-        x="Count",
-        y="Protocol",
-        orientation="h",
-        color="Protocol",
-        text="Count"
-    )
-
-    fig.update_traces(textposition="outside")
-
-    fig.update_layout(
-        xaxis_title="Packets",
-        yaxis_title=None,
-        height=200,
-        width=70,
-        showlegend=False
-    )
-
-    left_margin, graph, right_margin = st.columns([0.3, 9, 0.7])
-
-    with graph:
+    if not packets.empty:
+        proto = packets["protocol"].value_counts().reset_index()
+        proto.columns = ["Protocol", "Count"]
+        fig = px.bar(
+            proto,
+            x="Count",
+            y="Protocol",
+            orientation="h",
+            color="Protocol",
+            text="Count",
+        )
+        fig.update_traces(textposition="outside")
+        fig.update_layout(
+            xaxis_title="Packets", yaxis_title=None, height=200, showlegend=False
+        )
         st.plotly_chart(fig, width="stretch")
 
-    # st.plotly_chart(fig, width="stretch")
-
-  
 alret_box_style()
-
 with right:
-
     st.markdown(get_h2("최근 경고"), unsafe_allow_html=True)
-
     if warnings.empty:
         st.success("No Warning")
-
     else:
-
         for _, row in warnings.iterrows():
-            last_time = datetime.fromtimestamp(row.last_timestamp, tz=kst).strftime("%Y-%m-%d %H:%M:%S")
-            st.markdown(f"""
-<div class="alert-div">
-    <span>{row.attack_type}</span>
-    <span>{row.src_ip}</span>
-    <span>{last_time}</span>
-    <span class="alert-cnt-span">{row.counter}</span>
-</div>
-""", unsafe_allow_html=True)
-
+            last_time = datetime.fromtimestamp(
+                row.last_timestamp, tz=kst
+            ).strftime("%Y-%m-%d %H:%M:%S")
+            st.markdown(
+                f"""
+            <div class="alert-div">
+                <span>{row.attack_type}</span>
+                <span>{row.src_ip}</span>
+                <span>{last_time}</span>
+                <span class="alert-cnt-span">{row.counter}</span>
+            </div>
+            """,
+                unsafe_allow_html=True,
+            )
 
 left, right = st.columns(2)
 with left:
-
     st.markdown(get_h2("최다 IP"), unsafe_allow_html=True)
+    if not packets.empty:
+        top = (
+            packets.groupby("src_ip")
+            .size()
+            .reset_index(name="Packets")
+            .sort_values("Packets", ascending=False)
+            .head(5)
+            .rename(columns={"src_ip": "Source IP"})
+        )
+        st.dataframe(top, hide_index=True, width="stretch")
 
-    top = (
-    packets.groupby("src_ip")
-    .size()
-    .reset_index(name="Packets")
-    .sort_values("Packets", ascending=False)
-    .head(5)
-    .rename(columns={"src_ip": "Source IP"})
-)
-
-    st.dataframe(
-        top,
-        hide_index=True,
-        width='stretch',
-        column_config={
-            "Source IP": st.column_config.TextColumn(
-                "Source IP",
-                width="large"
-            ),
-            "Packets": st.column_config.NumberColumn(
-                "횟수",
-                width="small",
-                format="%d"
-            )
-        }
-    )
 with right:
     st.markdown(get_h2("최근 패킷"), unsafe_allow_html=True)
+    if not packets.empty:
+        recent = packets.sort_values("timestamp", ascending=False).head(5).copy()
+        recent["Time"] = (
+            pd.to_datetime(recent["timestamp"], unit="s", utc=True)
+            .dt.tz_convert("Asia/Seoul")
+            .dt.strftime("%Y-%m-%d %H:%M:%S")
+        )
+        recent = recent.rename(
+            columns={
+                "src_ip": "Source IP",
+                "dst_ip": "Destination IP",
+                "protocol": "Protocol",
+                "packet_size": "Size (B)",
+            }
+        )
+        st.dataframe(
+            recent[["Time", "Source IP", "Destination IP", "Protocol", "Size (B)"]],
+            hide_index=True,
+            width="stretch",
+        )
 
-
-    recent = (
-        packets.sort_values("timestamp", ascending=False)
-        .head(5)
-        .copy()
-    )
-
-    recent["Time"] = (
-    pd.to_datetime(recent["timestamp"], unit="s", utc=True)
-      .dt.tz_convert("Asia/Seoul")
-      .dt.strftime("%Y-%m-%d %H:%M:%S")
-)
-
-    # 표시할 컬럼 선택 및 이름 변경
-    recent = recent.rename(columns={
-        "src_ip": "Source IP",
-        "dst_ip": "Destination IP",
-        "protocol": "Protocol",
-        "packet_size": "Size (B)"
-    })
-
-    st.dataframe(
-        recent[
-            [
-                "Time",
-                "Source IP",
-                "Destination IP",
-                "Protocol",
-                "Size (B)"
-            ]
-        ],
-        hide_index=True,
-        width="stretch",
-        column_config={
-            "Time": st.column_config.TextColumn(
-                "Time",
-                width="small"
-            ),
-            "Source IP": st.column_config.TextColumn(
-                "Source IP",
-                width="medium"
-            ),
-            "Destination IP": st.column_config.TextColumn(
-                "Destination IP",
-                width="medium"
-            ),
-            "Protocol": st.column_config.TextColumn(
-                "Protocol",
-                width="small"
-            ),
-            "Size (B)": st.column_config.NumberColumn(
-                "Packet Size",
-                width="small",
-                format="%d B"
-            ),
-        }
-    )
-
-check_new_warning()
+st.sidebar.subheader("🔊 경보 음성 설정")
+voice_col1, voice_col2 = st.sidebar.columns(2)
+with voice_col1:
+    if st.button(
+        "👩 여성" + (" ✅" if st.session_state.alert_voice_gender == "female" else ""),
+        use_container_width=True,
+    ):
+        st.session_state.alert_voice_gender = "female"
+        st.rerun()
+with voice_col2:
+    if st.button(
+        "👨 남성" + (" ✅" if st.session_state.alert_voice_gender == "male" else ""),
+        use_container_width=True,
+    ):
+        st.session_state.alert_voice_gender = "male"
+        st.rerun()
