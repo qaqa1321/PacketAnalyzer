@@ -48,7 +48,7 @@ class WarningRepo:
                     counter,
                     score
                 )
-                VALUES (?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?)
             """, (
                 current_timestamp,
                 current_timestamp,
