@@ -108,6 +108,8 @@ class PacketProcessor:
             except Exception as e :
                 print(e)
             
+            if _rule_exists(packet.src_ip, "ACCEPT"):
+                continue
 
             for detect in self.detectors:
                 raw_result = detect(context.packet, context.flow)

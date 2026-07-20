@@ -8,7 +8,7 @@ def _rule_exists(ip: str, target: str) -> bool:
     target : "DROP" 또는 "ACCEPT"
     """
     if platform.system() != "Linux":
-            return
+        return
 
     result = subprocess.run(
         [
