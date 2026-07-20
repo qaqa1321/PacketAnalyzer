@@ -67,5 +67,3 @@ if new_message:
     conn.commit()
     conn.close()
     st.rerun()
-
-st.caption("3초마다 자동으로 새 메시지를 확인합니다.")
