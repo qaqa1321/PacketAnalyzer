@@ -132,6 +132,8 @@ class PacketProcessor:
                             name,
                             score
                         )
+
+                        # score대로 차단하는 코드
                     except Exception as e :
                         print(e)
 
