@@ -10,7 +10,8 @@ class WarningRepo:
                 last_timestamp INTEGER,
                 src_ip TEXT,
                 attack_type TEXT,
-                counter INTEGER
+                counter INTEGER DEFAULT 0,
+                score REAL DEFAULT 0.0,
             );
         ''')
     
