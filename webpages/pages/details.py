@@ -734,12 +734,6 @@ with mode_col2:
 
 IS_BLOCKED = st.session_state.view_mode == "blocked"
 
-st.markdown(
-    f'<div style="font-size:13px; color:#94a3b8; font-family:\'Inter\', sans-serif; letter-spacing:0.3px; margin-bottom:14px;">'
-    f'{"Blocked Traffic Monitoring (차단된 패킷)" if IS_BLOCKED else "Real-Time Network Traffic Monitoring"}</div>',
-    unsafe_allow_html=True,
-)
-
 try:
     packets_df = load_blocked_packets() if IS_BLOCKED else load_packets()
 except Exception as e:
@@ -843,17 +837,15 @@ else:
     private_df = geo_df[geo_df["status"] == "private"]
     anomalous_df = geo_df[geo_df["status"].isin(ANOMALOUS_SOURCE_STATUSES)]
 
-    if ok_df.empty:
-        st.info("지도에 표시할 IP 위치 정보가 없습니다.")
-    else:
-        fig_geo, fig_pie, count_df = build_geo_figures(ok_df)
+    
 
-        col_map, col_pie = st.columns([3, 1], gap="small")
-        with col_map:
+    fig_geo, fig_pie, count_df = build_geo_figures(ok_df)
 
-            st.plotly_chart(fig_geo, width="stretch", config={"displayModeBar": False})
-        with col_pie:
-            st.plotly_chart(fig_pie, width="stretch", config={"displayModeBar": False})
+    col_map, col_pie = st.columns([3, 1], gap="small")
+    with col_map:
+        st.plotly_chart(fig_geo, width="stretch", config={"displayModeBar": False})
+    with col_pie:
+        st.plotly_chart(fig_pie, width="stretch", config={"displayModeBar": False})
 
     st.markdown(
         f'<div class="geo-note-pills">'
