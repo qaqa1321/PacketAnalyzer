@@ -693,7 +693,7 @@ def build_geo_figures(ok_df: pd.DataFrame):
 # ----------------------------------------------------------------------
 st.markdown(
     """
-    <div style="display:flex; align-items:center; gap:10px; margin-bottom:2px;">
+    <div style="display:flex; align-items:center; gap:10px; margin-bottom:15px;">
         <span style="font-size:26px;">🛡️</span>
         <span style="font-size:26px; font-weight:800; font-family:'Inter', sans-serif; color:#f8fafc; letter-spacing:-0.3px;">상세정보</span>
     </div>
@@ -734,11 +734,11 @@ with mode_col2:
 
 IS_BLOCKED = st.session_state.view_mode == "blocked"
 
-st.markdown(
-    f'<div style="font-size:13px; color:#94a3b8; font-family:\'Inter\', sans-serif; letter-spacing:0.3px; margin-bottom:14px;">'
-    f'{"Blocked Traffic Monitoring (차단된 패킷)" if IS_BLOCKED else "Real-Time Network Traffic Monitoring"}</div>',
-    unsafe_allow_html=True,
-)
+# st.markdown(
+#     f'<div style="font-size:13px; color:#94a3b8; font-family:\'Inter\', sans-serif; letter-spacing:0.3px; margin-bottom:14px;">'
+#     f'{"Blocked Traffic Monitoring (차단된 패킷)" if IS_BLOCKED else "Real-Time Network Traffic Monitoring"}</div>',
+#     unsafe_allow_html=True,
+# )
 
 try:
     packets_df = load_blocked_packets() if IS_BLOCKED else load_packets()
