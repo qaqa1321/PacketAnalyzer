@@ -14,7 +14,6 @@ Packet Analyzer는 실시간으로 네트워크 패킷을 수집하고 다양한
 
 방화벽 관련 기능은 리눅스에서만 구현되어 있습니다. 윈도우에서 실행해도 오류가 나지는 않지만, 실제로 패킷이 방화벽에 차단되지 않습니다. 
 
----
 
 ### 1. 패키지 설치
 
@@ -22,7 +21,6 @@ Packet Analyzer는 실시간으로 네트워크 패킷을 수집하고 다양한
 pip install -r requirements.txt
 ```
 
----
 ### 2. Discord 봇 및 .env 설정
 
 `.env` 파일 설정이 필요합니다.
@@ -39,7 +37,6 @@ auth_id = YOUR_DISCORD_USER_ID_1, YOUR_DISCORD_USER_ID_2, ...
 + `auth_id`: Discord에서 개발자 모드를 키고 **사용자 프로필 클릭 - 사용자 ID 복사**하여 저장합니다.
    * 여러 개의 계정에 전송하려면 **쉼표(,)** 로 구분합니다.
 
----
 
 ### 3. Engine 실행
 
@@ -47,7 +44,6 @@ auth_id = YOUR_DISCORD_USER_ID_1, YOUR_DISCORD_USER_ID_2, ...
 python main.py
 ```
 
----
 
 ### 4. Dashboard 실행
 
@@ -55,7 +51,6 @@ python main.py
 streamlit run index.py
 ```
 
----
 
 ### 5. 전체 실행
 
