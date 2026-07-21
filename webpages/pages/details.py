@@ -50,7 +50,7 @@ st.markdown(
     /* 상단 5개 KPI 카드 중 앞쪽 2개(총 Packets, 총 Flows)만 강조 */
     div[data-testid="stMetric"]:nth-of-type(1) [data-testid="stMetricValue"],
     div[data-testid="stMetric"]:nth-of-type(2) [data-testid="stMetricValue"] {
-        color: #f87171 !important;
+        /* color: #f87171 !important; */
     }
     div[data-testid="stMetric"] [data-testid="stMetricValue"] {
         font-family: "Inter", sans-serif;

@@ -109,9 +109,6 @@ class PacketProcessor:
                     packet.packet_size, packet.payload_size, packet.tcp_flags)
             except Exception as e :
                 traceback.print_exc()
-            
-            if _rule_exists(packet.src_ip, "ACCEPT"):
-                continue
 
             for detect in self.detectors:
                 raw_result = detect(context.packet, context.flow)
@@ -123,17 +120,20 @@ class PacketProcessor:
 
                 if result:
                     try: 
-                        # === 점수 계산하는 부분 ===
-                        calulator = ScoreCalculator(self.db_module)
-                        score = calulator.calc_score(name, packet)
-                        # === 점수 계산하는 부분 끝 ===
-
                         warning_manager.add_warning(
                             packet.timestamp,
                             packet.src_ip,
                             name,
                             score
                         )
+                        
+                        if _rule_exists(packet.src_ip, "ACCEPT"):
+                            continue
+
+                        # === 점수 계산하는 부분 ===
+                        calulator = ScoreCalculator(self.db_module)
+                        score = calulator.calc_score(name, packet)
+                        # === 점수 계산하는 부분 끝 ===
 
                         # score대로 차단하는 코드
                         auto_blocker = AutoBlock(self.db_module)
