@@ -99,7 +99,7 @@ def load_warnings() -> pd.DataFrame:
     try:
         df = pd.read_sql_query(
             """
-            SELECT id, first_timestamp, last_timestamp, src_ip, attack_type, counter
+            SELECT id, first_timestamp, last_timestamp, src_ip, attack_type, counter, score
             FROM warnings
             ORDER BY last_timestamp DESC
             """,
@@ -110,23 +110,23 @@ def load_warnings() -> pd.DataFrame:
     return df
 
 
-def grade_from_counter(counter: int) -> str:
-    """발생 횟수(counter)를 기준으로 위험 등급을 계산한다.
+def grade_from_score(score: int) -> str:
+    """점수(score)를 기준으로 위험 등급을 계산한다.
     임계값은 팀 기준에 맞게 조정하세요."""
-    if counter >= 200:
+    if score >= 9:
         return "Critical"
-    elif counter >= 100:
+    elif score >= 7:
         return "High"
-    elif counter >= 50:
+    elif score >= 4:
         return "Medium"
-    elif counter >= 1:
+    elif score >= 0.1:
         return "Low"
     return "None"
 
 
-def grade_display(counter: int) -> str:
+def grade_display(score: int) -> str:
     """표(data_editor)용: 등급을 이모지와 함께 텍스트로 표시한다."""
-    grade = grade_from_counter(counter)
+    grade = grade_from_score(score)
     return f"{GRADE_EMOJI[grade]} {grade}"
 
 
@@ -287,12 +287,12 @@ st.markdown(
 present_types = sorted(df["attack_type"].dropna().unique().tolist()) if not df.empty else []
 
 counts = df["attack_type"].value_counts()
-max_counter_by_type = df.groupby("attack_type")["counter"].max()
+max_score_by_type = df.groupby("attack_type")["score"].max()
 
 chart_df = pd.DataFrame({
     "Attack Type": present_types,
     "Attack Count": [int(counts.get(t, 0)) for t in present_types],
-    "Grade": [grade_from_counter(max_counter_by_type.get(t, 0)) for t in present_types],
+    "Grade": [grade_from_score(max_score_by_type.get(t, 0)) for t in present_types],
 })
 
 max_count = int(chart_df["Attack Count"].max()) if len(chart_df) else 0
@@ -356,7 +356,7 @@ with col_list:
         "Timestamp": [format_ts(row["last_timestamp"]) for row in display_rows],
         "Attack Type": [row["attack_type"] for row in display_rows],
         "Src IP": [row["src_ip"] for row in display_rows],
-        "Attack Grade": [grade_display(row["counter"]) for row in display_rows],
+        "Attack Grade": [grade_display(row["score"]) for row in display_rows],
     })
 
     st.data_editor(
@@ -386,7 +386,7 @@ with col_detail:
     else:
         rows_by_id = {row["id"]: row for row in display_rows}
         selected_row = rows_by_id[selected_ids[0]]
-        grade_name = grade_from_counter(selected_row["counter"])
+        grade_name = grade_from_score(selected_row["score"])
 
         st.markdown("**Detail Data View**")
 
@@ -398,6 +398,7 @@ with col_detail:
             ("First Timestamp", format_ts(selected_row["first_timestamp"])),
             ("Last Timestamp", format_ts(selected_row["last_timestamp"])),
             ("Counter", selected_row["counter"]),
+            ("Score", selected_row["score"]),
         ]
         st.markdown(field_grid_html(pairs, GRADE_COLORS[grade_name]), unsafe_allow_html=True)
 

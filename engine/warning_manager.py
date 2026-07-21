@@ -31,3 +31,6 @@ class WarningManager:
             )
 
         self.cache.clear()
+    
+    def get_waraning():
+        pass

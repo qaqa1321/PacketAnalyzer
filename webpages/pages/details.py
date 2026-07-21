@@ -36,6 +36,13 @@ KIND_ACCENT = {
     "packet": "#3b82f6",  # 파랑
     "flow": "#8b5cf6",    # 보라
 }
+DEFAULT_COLOR = {"bg": "#f3f4f6", "fg": "#6b7280", "accent": "#9ca3af"}
+
+# Detail 헤더 배경색: Packet/Flow 종류 기준
+KIND_ACCENT = {
+    "packet": "#3b82f6",  # 파랑
+    "flow": "#8b5cf6",    # 보라
+}
 
 from  webpages.css.st_metric import metric_cards, detail_card_styles
 from  webpages.css.st_alertbox import alret_box_style
@@ -266,7 +273,10 @@ def render_detail(row: pd.Series, kind: str = "packet") -> str:
 
     proto = d.get("protocol", "-")
     colors = _protocol_color(proto)          # 프로토콜 뱃지 색상용 (그대로 유지)
+    colors = _protocol_color(proto)          # 프로토콜 뱃지 색상용 (그대로 유지)
     proto_badge = badge(proto, colors["bg"], colors["fg"])
+    kind_accent = KIND_ACCENT.get(kind, DEFAULT_COLOR["accent"])   # 헤더 배경용 (새로 추가)
+    flag_badge = badge(d.get("tcp_flags", ""), "#eef2ff", "#4f46e5")
     kind_accent = KIND_ACCENT.get(kind, DEFAULT_COLOR["accent"])   # 헤더 배경용 (새로 추가)
     flag_badge = badge(d.get("tcp_flags", ""), "#eef2ff", "#4f46e5")
 
@@ -279,6 +289,7 @@ def render_detail(row: pd.Series, kind: str = "packet") -> str:
     dst_label = f"{dst_ip}   :   {dst_port}" if dst_port not in (None, "", "nan") else f"{dst_ip}"
 
     header = f"""
+    <div class="detail-header" style="--accent-a:{kind_accent}; --accent-b:{kind_accent}cc;">
     <div class="detail-header" style="--accent-a:{kind_accent}; --accent-b:{kind_accent}cc;">
         <div class="detail-id-row">
             <span class="detail-id">#{d.get('id', '-')}</span>
@@ -602,7 +613,11 @@ def build_geo_figures(ok_df: pd.DataFrame):
         oceancolor="#0a0f1c",
         showlakes=True,
         lakecolor="#0a0f1c",
+        oceancolor="#0a0f1c",
+        showlakes=True,
+        lakecolor="#0a0f1c",
         showcountries=True,
+        countrycolor="rgba(148,163,184,0.3)",
         countrycolor="rgba(148,163,184,0.3)",
         bgcolor="rgba(0,0,0,0)",
     )
@@ -638,8 +653,11 @@ def build_geo_figures(ok_df: pd.DataFrame):
             values=pie_df["count"],
             hole=0.6,
             pull=[0.02] * len(pie_df),
+            hole=0.6,
+            pull=[0.02] * len(pie_df),
             marker=dict(
                 colors=px_dark_palette(len(pie_df)),
+                line=dict(color="#0f172a", width=3),
                 line=dict(color="#0f172a", width=3),
             ),
             textinfo="none",
@@ -872,6 +890,14 @@ if "prev_packets_sel" not in st.session_state:
     st.session_state.prev_packets_sel = ()
 if "prev_flows_sel" not in st.session_state:
     st.session_state.prev_flows_sel = ()
+if "packets_key_ver" not in st.session_state:
+    st.session_state.packets_key_ver = 0
+if "flows_key_ver" not in st.session_state:
+    st.session_state.flows_key_ver = 0
+if "prev_packets_sel" not in st.session_state:
+    st.session_state.prev_packets_sel = ()
+if "prev_flows_sel" not in st.session_state:
+    st.session_state.prev_flows_sel = ()
 
 title_col, refresh_col = st.columns([8, 1])
 with title_col:
@@ -881,6 +907,7 @@ with title_col:
     )
 with refresh_col:
     if st.button("🔄 새로고침", width='stretch'):
+        st.session_state.packets_key_ver += 1
         st.session_state.packets_key_ver += 1
         st.session_state.flows_key_ver += 1
         st.session_state.prev_packets_sel = ()
@@ -928,6 +955,7 @@ with left:
         event = st.dataframe(
             display_df,
             width='stretch',
+            height=340,
             height=340,
             hide_index=True,
             on_select="rerun",
