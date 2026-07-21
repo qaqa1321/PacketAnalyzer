@@ -613,11 +613,7 @@ def build_geo_figures(ok_df: pd.DataFrame):
         oceancolor="#0a0f1c",
         showlakes=True,
         lakecolor="#0a0f1c",
-        oceancolor="#0a0f1c",
-        showlakes=True,
-        lakecolor="#0a0f1c",
         showcountries=True,
-        countrycolor="rgba(148,163,184,0.3)",
         countrycolor="rgba(148,163,184,0.3)",
         bgcolor="rgba(0,0,0,0)",
     )
@@ -653,11 +649,8 @@ def build_geo_figures(ok_df: pd.DataFrame):
             values=pie_df["count"],
             hole=0.6,
             pull=[0.02] * len(pie_df),
-            hole=0.6,
-            pull=[0.02] * len(pie_df),
             marker=dict(
                 colors=px_dark_palette(len(pie_df)),
-                line=dict(color="#0f172a", width=3),
                 line=dict(color="#0f172a", width=3),
             ),
             textinfo="none",
@@ -955,7 +948,6 @@ with left:
         event = st.dataframe(
             display_df,
             width='stretch',
-            height=340,
             height=340,
             hide_index=True,
             on_select="rerun",
