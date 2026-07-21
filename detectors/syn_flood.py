@@ -20,7 +20,7 @@ def detect(packet:  PacketData, flow: Flow):
 
     syn_ratio = syn_count / packet_count
     
-    if packet_count >= 100 and syn_ratio >= 0.65:
+    if flow.pps > 65 and packet_count >= 100 and syn_ratio >= 0.65 :
         print(datetime.fromtimestamp(packet.timestamp), packet.src_ip)
         print(f"총 패킷 중 syn 비율: {syn_ratio:.2f}")
         print("SYN Flood 공격을 받고 있습니다.")

@@ -18,7 +18,7 @@ def detect(packet:  PacketData, flow: Flow):
 
     ack_ratio = ack_count / packet_count
     
-    if packet_count >= 100 and ack_ratio >= 0.65:
+    if flow.pps > 65 and packet_count >= 100 and ack_ratio >= 0.65:
         print(datetime.fromtimestamp(packet.timestamp), packet.src_ip)
         print(f"총 패킷 중 ack 비율: {ack_ratio:.2f}")
         print ("ACK Flood 공격을 받고 있습니다.")
