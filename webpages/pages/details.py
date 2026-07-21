@@ -1,4 +1,3 @@
-
 import importlib
 import os
 import sys
@@ -7,6 +6,7 @@ import pandas as pd
 import plotly.graph_objects as go
 import pycountry
 import streamlit as st
+from babel import Locale
 from zoneinfo import ZoneInfo
 from webpages.functions.titles  import get_h2
 from webpages.css.st_header import _setting
@@ -36,6 +36,13 @@ KIND_ACCENT = {
     "packet": "#3b82f6",  # 파랑
     "flow": "#8b5cf6",    # 보라
 }
+DEFAULT_COLOR = {"bg": "#f3f4f6", "fg": "#6b7280", "accent": "#9ca3af"}
+
+# Detail 헤더 배경색: Packet/Flow 종류 기준
+KIND_ACCENT = {
+    "packet": "#3b82f6",  # 파랑
+    "flow": "#8b5cf6",    # 보라
+}
 
 from  webpages.css.st_metric import metric_cards, detail_card_styles
 from  webpages.css.st_alertbox import alret_box_style
@@ -50,7 +57,7 @@ st.markdown(
     /* 상단 5개 KPI 카드 중 앞쪽 2개(총 Packets, 총 Flows)만 강조 */
     div[data-testid="stMetric"]:nth-of-type(1) [data-testid="stMetricValue"],
     div[data-testid="stMetric"]:nth-of-type(2) [data-testid="stMetricValue"] {
-        color: #f87171 !important;
+        /* color: #f87171 !important; */
     }
     div[data-testid="stMetric"] [data-testid="stMetricValue"] {
         font-family: "Inter", sans-serif;
@@ -104,6 +111,7 @@ st.markdown(
         border-left: 1px solid rgba(148,163,184,0.12);
         padding-left: 20px !important;
     }
+
 
     /* Packets / Flows 탭 스타일 */
     button[data-baseweb="tab"] {
@@ -166,7 +174,7 @@ st.markdown(
     }
     /* 페이지 맨 아래 여백 복구 (Traffic Monitor / Detail 하단 잘림 방지) */
     section.main > div.block-container {
-        padding-bottom: 3rem !important;
+        padding-bottom: 5rem !important;
     }
     </style>
     """,
@@ -265,7 +273,10 @@ def render_detail(row: pd.Series, kind: str = "packet") -> str:
 
     proto = d.get("protocol", "-")
     colors = _protocol_color(proto)          # 프로토콜 뱃지 색상용 (그대로 유지)
+    colors = _protocol_color(proto)          # 프로토콜 뱃지 색상용 (그대로 유지)
     proto_badge = badge(proto, colors["bg"], colors["fg"])
+    kind_accent = KIND_ACCENT.get(kind, DEFAULT_COLOR["accent"])   # 헤더 배경용 (새로 추가)
+    flag_badge = badge(d.get("tcp_flags", ""), "#eef2ff", "#4f46e5")
     kind_accent = KIND_ACCENT.get(kind, DEFAULT_COLOR["accent"])   # 헤더 배경용 (새로 추가)
     flag_badge = badge(d.get("tcp_flags", ""), "#eef2ff", "#4f46e5")
 
@@ -278,6 +289,7 @@ def render_detail(row: pd.Series, kind: str = "packet") -> str:
     dst_label = f"{dst_ip}   :   {dst_port}" if dst_port not in (None, "", "nan") else f"{dst_ip}"
 
     header = f"""
+    <div class="detail-header" style="--accent-a:{kind_accent}; --accent-b:{kind_accent}cc;">
     <div class="detail-header" style="--accent-a:{kind_accent}; --accent-b:{kind_accent}cc;">
         <div class="detail-id-row">
             <span class="detail-id">#{d.get('id', '-')}</span>
@@ -400,11 +412,11 @@ def _parse_timestamp_column(series: pd.Series) -> pd.Series:
     return parsed.dt.tz_convert(KST)
 
 
-def _load_from_db() -> pd.DataFrame:
+def _load_table_from_db(table_name: str) -> pd.DataFrame:
     db = dbsource()
-    rows = db.fetch("packets")
+    rows = db.fetch(table_name)
     if not rows:
-        raise ValueError("packets 테이블에 데이터가 없습니다.")
+        raise ValueError(f"{table_name} 테이블에 데이터가 없습니다.")
 
     df = pd.DataFrame(rows)
     if "timestamp" in df.columns:
@@ -414,12 +426,22 @@ def _load_from_db() -> pd.DataFrame:
     return df.sort_values("timestamp" if "timestamp" in df.columns else "id").reset_index(drop=True)
 
 
+def _load_from_db() -> pd.DataFrame:
+    return _load_table_from_db("packets")
+
+
 def load_packets() -> pd.DataFrame:
     """
     _dbsource.py를 통해 실제 DB에서 패킷을 가져옵니다.
     실패하면 예외를 그대로 올려서 화면에 에러로 표시합니다 (mock 대체 없음).
     """
     return _load_from_db()
+
+
+def load_blocked_packets() -> pd.DataFrame:
+    """blocked_packets 테이블(id, timestamp, src_ip, dst_ip, protocol, packet_size, payload_size, tcp_flags)에서
+    차단된 패킷을 가져옵니다."""
+    return _load_table_from_db("blocked_packets")
 
 
 def build_flows(df: pd.DataFrame) -> pd.DataFrame:
@@ -483,6 +505,45 @@ def _safe_iso3(iso2):
         return None
 
 
+_KO_COUNTRY_FALLBACK = {
+    "US": "미국", "KR": "대한민국", "CN": "중국", "JP": "일본", "RU": "러시아",
+    "DE": "독일", "FR": "프랑스", "GB": "영국", "NL": "네덜란드", "SG": "싱가포르",
+    "HK": "홍콩", "TW": "대만", "IN": "인도", "BR": "브라질", "CA": "캐나다",
+    "AU": "호주", "VN": "베트남", "TH": "태국", "ID": "인도네시아", "PH": "필리핀",
+    "MY": "말레이시아", "IT": "이탈리아", "ES": "스페인", "SE": "스웨덴", "NO": "노르웨이",
+    "FI": "핀란드", "DK": "덴마크", "PL": "폴란드", "UA": "우크라이나", "TR": "튀르키예",
+    "IE": "아일랜드", "CH": "스위스", "AT": "오스트리아", "BE": "벨기에", "PT": "포르투갈",
+    "CZ": "체코", "RO": "루마니아", "GR": "그리스", "IL": "이스라엘", "AE": "아랍에미리트",
+    "SA": "사우디아라비아", "EG": "이집트", "ZA": "남아프리카공화국", "MX": "멕시코",
+    "AR": "아르헨티나", "CL": "칠레", "CO": "콜롬비아", "PE": "페루", "NZ": "뉴질랜드",
+    "IR": "이란", "PK": "파키스탄", "BD": "방글라데시", "KZ": "카자흐스탄", "BY": "벨라루스",
+    "RS": "세르비아", "HU": "헝가리", "BG": "불가리아", "HR": "크로아티아", "SK": "슬로바키아",
+    "SI": "슬로베니아", "LT": "리투아니아", "LV": "라트비아", "EE": "에스토니아",
+    "LU": "룩셈부르크", "IS": "아이슬란드", "CY": "키프로스", "MT": "몰타", "MC": "모나코",
+    "LI": "리히텐슈타인", "IQ": "이라크", "SY": "시리아", "JO": "요르단", "KW": "쿠웨이트",
+    "QA": "카타르", "OM": "오만", "BH": "바레인", "LB": "레바논", "NG": "나이지리아",
+    "KE": "케냐", "MA": "모로코", "DZ": "알제리", "TN": "튀니지", "CU": "쿠바",
+    "VE": "베네수엘라", "EC": "에콰도르", "BO": "볼리비아", "PY": "파라과이", "UY": "우루과이",
+    "MN": "몽골", "KH": "캄보디아", "LA": "라오스", "MM": "미얀마", "NP": "네팔",
+    "LK": "스리랑카", "AF": "아프가니스탄", "UZ": "우즈베키스탄", "AZ": "아제르바이잔",
+    "GE": "조지아", "AM": "아르메니아", "MD": "몰도바", "AL": "알바니아", "MK": "북마케도니아",
+    "BA": "보스니아 헤르체고비나", "ME": "몬테네그로", "XK": "코소보",
+}
+
+
+def _country_name_ko(country_code, fallback_name: str) -> str:
+    """국가 코드 -> 한글 국가명. babel이 있으면 우선 사용하고, 없으면 폴백 테이블을 사용한다."""
+    code = str(country_code).upper() if country_code else ""
+    try:
+        from babel import Locale
+        name = Locale.parse("ko").territories.get(code)
+        if name:
+            return name
+    except Exception:
+        pass
+    return _KO_COUNTRY_FALLBACK.get(code, fallback_name)
+
+
 def px_dark_palette(n: int) -> list[str]:
     """다크 배경에서 잘 보이는 채도 높은 팔레트를 순환시켜 반환."""
     base = [
@@ -493,6 +554,7 @@ def px_dark_palette(n: int) -> list[str]:
 
 
 def build_geo_figures(ok_df: pd.DataFrame):
+    """공인 IP(ok 상태)만으로 국가별 집계 + 코로플레스 지도 / 도넛 차트를 생성 (다크 테마)."""
     count_df = (
         ok_df.groupby(["country_code", "country_name", "latitude", "longitude"])
         .size()
@@ -501,18 +563,21 @@ def build_geo_figures(ok_df: pd.DataFrame):
         .reset_index(drop=True)
     )
     count_df["iso3_code"] = count_df["country_code"].apply(_safe_iso3)
+    count_df["country_name_ko"] = count_df.apply(
+        lambda r: _country_name_ko(r["country_code"], r["country_name"]), axis=1
+    )
 
     fig_geo = go.Figure(
         data=go.Choropleth(
             locations=count_df["iso3_code"],
             locationmode="ISO-3",
             z=count_df["count"],
-            text=count_df["country_name"],
+            text=count_df["country_name_ko"],
             colorscale=[
-                [0.0, "#1e293b"],
-                [0.3, "#7f1d1d"],
-                [0.6, "#b91c1c"],
-                [1.0, "#ef4444"],
+                [0.0, "#22c55e"],
+    [0.3, "#eab308"],  
+    [0.6, "#f97316"],  
+    [1.0, "#ef4444"],
             ],
             marker_line_color="#f8fafc",
             marker_line_width=1,
@@ -536,9 +601,12 @@ def build_geo_figures(ok_df: pd.DataFrame):
         showcoastlines=True,
         coastlinecolor="rgba(148,163,184,0.35)",
         coastlinewidth=0.6,
-        lataxis_range=[-58, 85],
-        domain=dict(x=[0, 0.9], y=[0, 1]),
+        fitbounds="locations",
+        domain=dict(x=[0, 1], y=[0, 1]),
         projection_type="equirectangular",
+        projection_scale=3.25,
+        lonaxis=dict(range=[-180, 180]),
+        lataxis=dict(range=[-60, 85]),
         showland=True,
         landcolor="#1e293b",
         showocean=True,
@@ -557,7 +625,7 @@ def build_geo_figures(ok_df: pd.DataFrame):
         font=dict(family="Inter, sans-serif", size=12, color="#e5e7eb"),
     )
 
-    pie_df = count_df[["country_name", "count"]].copy()
+    pie_df = count_df[["country_name_ko", "count"]].copy()
     total_count = pie_df["count"].sum()
     pie_df["ratio"] = pie_df["count"] / total_count
 
@@ -567,17 +635,17 @@ def build_geo_figures(ok_df: pd.DataFrame):
     if minor_sum > 0:
         pie_df = pd.concat(
             [
-                major_df[["country_name", "count"]],
-                pd.DataFrame([{"country_name": "Others", "count": minor_sum}]),
+                major_df[["country_name_ko", "count"]],
+                pd.DataFrame([{"country_name_ko": "기타", "count": minor_sum}]),
             ],
             ignore_index=True,
         )
     else:
-        pie_df = major_df[["country_name", "count"]]
+        pie_df = major_df[["country_name_ko", "count"]]
 
     fig_pie = go.Figure(
         data=go.Pie(
-            labels=pie_df["country_name"],
+            labels=pie_df["country_name_ko"],
             values=pie_df["count"],
             hole=0.6,
             pull=[0.02] * len(pie_df),
@@ -591,19 +659,23 @@ def build_geo_figures(ok_df: pd.DataFrame):
     )
     fig_pie.update_layout(
         title=dict(
-            text="Top Countries",
+            text="국가별 분포",
             font=dict(size=14, color="#f1f5f9", family="Inter, sans-serif"),
             x=0.05,
         ),
-        margin=dict(l=0, r=0, t=36, b=0),
+        margin=dict(l=0, r=0, t=36, b=90),
         height=460,
         showlegend=True,
         legend=dict(
-            orientation="v",
-            font=dict(size=12, color="#e2e8f0", family="Inter, sans-serif"),
-            itemwidth=40,
+            orientation="h",
+            font=dict(size=11, color="#e2e8f0", family="Inter, sans-serif"),
+            itemwidth=30,
             traceorder="normal",
             bgcolor="rgba(0,0,0,0)",
+            x=0.5,
+            xanchor="center",
+            y=-0.1,
+            yanchor="top",
         ),
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
@@ -625,41 +697,107 @@ st.markdown(
     """,
     unsafe_allow_html=True,
 )
+
+if "view_mode" not in st.session_state:
+    st.session_state.view_mode = "all"  # "all" | "blocked"
+
+mode_col1, mode_col2, _mode_spacer = st.columns([1.3, 1, 6])
+with mode_col1:
+    if st.button(
+        "🌐 전체 트래픽",
+        width="stretch",
+        type="primary" if st.session_state.view_mode == "all" else "secondary",
+    ):
+        if st.session_state.view_mode != "all":
+            st.session_state.view_mode = "all"
+            st.session_state.packets_key_ver = st.session_state.get("packets_key_ver", 0) + 1
+            st.session_state.flows_key_ver = st.session_state.get("flows_key_ver", 0) + 1
+            st.session_state.prev_packets_sel = ()
+            st.session_state.prev_flows_sel = ()
+            st.rerun()
+with mode_col2:
+    if st.button(
+        "🚫 Blocked",
+        width="stretch",
+        type="primary" if st.session_state.view_mode == "blocked" else "secondary",
+    ):
+        if st.session_state.view_mode != "blocked":
+            st.session_state.view_mode = "blocked"
+            st.session_state.packets_key_ver = st.session_state.get("packets_key_ver", 0) + 1
+            st.session_state.flows_key_ver = st.session_state.get("flows_key_ver", 0) + 1
+            st.session_state.prev_packets_sel = ()
+            st.session_state.prev_flows_sel = ()
+            st.rerun()
+
+IS_BLOCKED = st.session_state.view_mode == "blocked"
+
 st.markdown(
-    '<div style="font-size:13px; color:#94a3b8; font-family:\'Inter\', sans-serif; letter-spacing:0.3px; margin-bottom:14px;">Real-Time Network Traffic Monitoring</div>',
+    f'<div style="font-size:13px; color:#94a3b8; font-family:\'Inter\', sans-serif; letter-spacing:0.3px; margin-bottom:14px;">'
+    f'{"Blocked Traffic Monitoring (차단된 패킷)" if IS_BLOCKED else "Real-Time Network Traffic Monitoring"}</div>',
     unsafe_allow_html=True,
 )
 
 try:
-    packets_df = load_packets()
+    packets_df = load_blocked_packets() if IS_BLOCKED else load_packets()
 except Exception as e:
+    table_name = "blocked_packets" if IS_BLOCKED else "packets"
     st.error(
-        f"❌ DB에서 패킷을 불러오지 못했습니다: {e}\n\n"
-        "_dbsource.py 위치와 packets.db 경로를 확인해주세요."
+        f"❌ DB에서 {'차단된 패킷' if IS_BLOCKED else '패킷'}을 불러오지 못했습니다: {e}\n\n"
+        f"_dbsource.py 위치와 packets.db의 {table_name} 테이블을 확인해주세요."
     )
     st.stop()
 
 flows_df = build_flows(packets_df)
 
 TOTAL_PACKETS = len(packets_df)
-TOTAL_FLOWS = len(flows_df)
 TCP_PACKETS = int((packets_df.get("protocol", pd.Series(dtype=str)) == "TCP").sum())
 UDP_PACKETS = int((packets_df.get("protocol", pd.Series(dtype=str)) == "UDP").sum())
 UNIQUE_IP = packets_df["src_ip"].nunique() if "src_ip" in packets_df.columns else 0
 AVG_PACKET_SIZE = packets_df["packet_size"].mean() if "packet_size" in packets_df.columns else 0
-AVG_FLOW_PACKETS = flows_df["packet_count"].mean() if "packet_count" in flows_df.columns else 0
+
+if IS_BLOCKED:
+    # 초당 차단된 수: 차단 기록의 시간 범위(첫 ~ 마지막) 기준
+    if "timestamp" in packets_df.columns and len(packets_df) > 1:
+        _span_sec = (packets_df["timestamp"].max() - packets_df["timestamp"].min()).total_seconds()
+    else:
+        _span_sec = 0
+    BLOCKED_PER_SEC = (TOTAL_PACKETS / _span_sec) if _span_sec > 0 else float(TOTAL_PACKETS)
+
+    # 가장 많이 공격당한 목적지: blocked_packets에 dst_port가 있으면 포트 기준,
+    # 없으면(현재 스키마) dst_ip 기준으로 대체
+    if "dst_port" in packets_df.columns and packets_df["dst_port"].notna().any():
+        TOP_TARGET_LABEL = "최다 공격 Dst Port"
+        TOP_TARGET_VALUE = str(packets_df["dst_port"].value_counts().idxmax())
+    elif "dst_ip" in packets_df.columns and packets_df["dst_ip"].notna().any():
+        TOP_TARGET_LABEL = "최다 공격 목적지 IP"
+        TOP_TARGET_VALUE = str(packets_df["dst_ip"].value_counts().idxmax())
+    else:
+        TOP_TARGET_LABEL = "최다 공격 Dst Port"
+        TOP_TARGET_VALUE = "-"
+else:
+    TOTAL_FLOWS = len(flows_df)
+    AVG_FLOW_PACKETS = flows_df["packet_count"].mean() if "packet_count" in flows_df.columns else 0
 
 # ----------------------------------------------------------------------
 # 상단 요약 카드
 # ----------------------------------------------------------------------
 c1, c2, c3, c4, c5 = st.columns(5)
-card_data = [
-    (c1, "총 Packets", f"{TOTAL_PACKETS:,}"),
-    (c2, "총 Flows", f"{TOTAL_FLOWS:,}"),
-    (c3, "TCP Packets 수", f"{TCP_PACKETS:,}"),
-    (c4, "UDP Packets 수", f"{UDP_PACKETS:,}"),
-    (c5, "Unique IP", f"{UNIQUE_IP:,}"),
-]
+if IS_BLOCKED:
+    card_data = [
+        (c1, "총 차단된 Packets", f"{TOTAL_PACKETS:,}"),
+        (c2, "초당 차단된 수", f"{BLOCKED_PER_SEC:,.2f}"),
+        (c3, "차단된 TCP 수", f"{TCP_PACKETS:,}"),
+        (c4, "차단된 UDP 수", f"{UDP_PACKETS:,}"),
+        (c5, "Unique IP", f"{UNIQUE_IP:,}"),
+    ]
+else:
+    card_data = [
+        (c1, "총 Packets", f"{TOTAL_PACKETS:,}"),
+        (c2, "총 Flows", f"{TOTAL_FLOWS:,}"),
+        (c3, "TCP Packets 수", f"{TCP_PACKETS:,}"),
+        (c4, "UDP Packets 수", f"{UDP_PACKETS:,}"),
+        (c5, "Unique IP", f"{UNIQUE_IP:,}"),
+    ]
 for col, label, value in card_data:
     with col:
         st.metric(
@@ -679,10 +817,13 @@ with s1:
         f"{AVG_PACKET_SIZE:.1f}"
     )
 with s2:
-    st.metric(
-        "평균 Flow Packets",
-        f"{AVG_FLOW_PACKETS:.1f}"
-    )
+    if IS_BLOCKED:
+        st.metric(TOP_TARGET_LABEL, TOP_TARGET_VALUE)
+    else:
+        st.metric(
+            "평균 Flow Packets",
+            f"{AVG_FLOW_PACKETS:.1f}"
+        )
 
 filtered = packets_df.copy()
 
@@ -706,12 +847,14 @@ else:
 
         col_map, col_pie = st.columns([3, 1], gap="small")
         with col_map:
+
             st.plotly_chart(fig_geo, width="stretch", config={"displayModeBar": False})
         with col_pie:
             st.plotly_chart(fig_pie, width="stretch", config={"displayModeBar": False})
 
     st.markdown(
         f'<div class="geo-note-pills">'
+        f'<span class="geo-pill geo-pill-info">🌎 공인 IP {TOTAL_PACKETS-len(private_df)+len(anomalous_df):,}건</span>'
         f'<span class="geo-pill geo-pill-info">🏠 사설 IP {len(private_df):,}건</span>'
         f'<span class="geo-pill geo-pill-warn">⚠️ 비정상 출발지(멀티캐스트/예약대역) {len(anomalous_df):,}건</span>'
         f'</div>',
@@ -740,12 +883,24 @@ if "prev_packets_sel" not in st.session_state:
     st.session_state.prev_packets_sel = ()
 if "prev_flows_sel" not in st.session_state:
     st.session_state.prev_flows_sel = ()
+if "packets_key_ver" not in st.session_state:
+    st.session_state.packets_key_ver = 0
+if "flows_key_ver" not in st.session_state:
+    st.session_state.flows_key_ver = 0
+if "prev_packets_sel" not in st.session_state:
+    st.session_state.prev_packets_sel = ()
+if "prev_flows_sel" not in st.session_state:
+    st.session_state.prev_flows_sel = ()
 
 title_col, refresh_col = st.columns([8, 1])
 with title_col:
-    st.markdown(get_h2("📦 Traffic Monitor"), unsafe_allow_html=True)
+    st.markdown(
+        get_h2("🚫 Blocked Traffic Monitor" if IS_BLOCKED else "📦 Traffic Monitor"),
+        unsafe_allow_html=True,
+    )
 with refresh_col:
     if st.button("🔄 새로고침", width='stretch'):
+        st.session_state.packets_key_ver += 1
         st.session_state.packets_key_ver += 1
         st.session_state.flows_key_ver += 1
         st.session_state.prev_packets_sel = ()
@@ -815,7 +970,7 @@ with left:
 
             flow_event = st.dataframe(
                 flow_view,
-                use_container_width=True,
+                width="stretch",
                 height=340,
                 hide_index=True,
                 on_select="rerun",

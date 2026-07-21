@@ -149,7 +149,7 @@ def _render_login():
 
     col1, col2 = st.columns(2)
     with col1:
-        if st.button("확인", use_container_width=True):
+        if st.button("확인", width="stretch"):
             if not email or not password:
                 st.warning("ID와 PW를 모두 입력해주세요.")
             else:
@@ -163,7 +163,7 @@ def _render_login():
                 else:
                     st.error(error)
     with col2:
-        if st.button("회원가입", use_container_width=True):
+        if st.button("회원가입", width="stretch"):
             st.session_state.mode = "signup"
             st.rerun()
 
@@ -176,7 +176,7 @@ def _render_signup():
 
     col1, col2 = st.columns(2)
     with col1:
-        if st.button("가입하기", use_container_width=True):
+        if st.button("가입하기", width="stretch"):
             ok, message = signup_user(email.strip().lower(), password, password_confirm)
             if ok:
                 st.success(message)
@@ -184,7 +184,7 @@ def _render_signup():
             else:
                 st.error(message)
     with col2:
-        if st.button("로그인으로 돌아가기", use_container_width=True):
+        if st.button("로그인으로 돌아가기", width="stretch"):
             st.session_state.mode = "login"
             st.rerun()
 
