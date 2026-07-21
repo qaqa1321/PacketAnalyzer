@@ -693,7 +693,7 @@ def build_geo_figures(ok_df: pd.DataFrame):
 # ----------------------------------------------------------------------
 st.markdown(
     """
-    <div style="display:flex; align-items:center; gap:10px; margin-bottom:2px;">
+    <div style="display:flex; align-items:center; gap:10px; margin-bottom:15px;">
         <span style="font-size:26px;">🛡️</span>
         <span style="font-size:26px; font-weight:800; font-family:'Inter', sans-serif; color:#f8fafc; letter-spacing:-0.3px;">상세정보</span>
     </div>
