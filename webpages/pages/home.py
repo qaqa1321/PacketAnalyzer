@@ -63,6 +63,14 @@ WHERE timestamp >= ?
     params=(start,),
 )
 
+last_packet_data = pd.read_sql_query(
+    """
+SELECT MAX(timestamp) AS last_packet
+FROM packets;
+""",
+    conn,
+)
+
 blocked_packets = pd.read_sql_query(
     """
 SELECT MAX(timestamp) AS last_blocked
@@ -243,8 +251,12 @@ metric_cards()
 total_bytes = packets["packet_size"].sum()
 bps = (total_bytes * 8) / 60
 
+
+last_packet = last_packet_data["last_packet"].iloc[0]
+last_blocked = blocked_packets["last_blocked"].iloc[0]
+
 # 엔진 상태
-engine_status = "Running" if packets["timestamp"].max() + 5 > now or blocked_packets["last_blocked"] + 5 > now else "Stopped"
+engine_status = "Running" if packets["timestamp"].max() + 5 > now or blocked_packets["last_blocked"].iloc[0] + 5 > now else "Stopped"
 
 col, col1, col2, col3 = st.columns(4)
 
@@ -489,4 +501,3 @@ with voice_col2:
 #     # 4. 주입 성공 메시지 출력 후 화면을 즉시 강제 새로고침(rerun)
 #     st.sidebar.success(f"'{test_attack}' 데이터 주입 성공!")
 #     st.rerun()
-
