@@ -48,16 +48,17 @@ if me["role"] == "admin":
         signup_label = f"🔔 Access Requests ({total_pending})"
         role_label = f"🛡️ 권한 요청 ({total_pending})"
     else:
-        signup_label = "🔔 가입 승인 관리"
+        signup_label = "🔔 Access Requests"
         role_label = "권한 요청 관리"
 
     pages.append(st.Page('webpages/pages/access_requests.py', title=signup_label))
 
     
-    security_pending = get_unread_notification_count("security_alert")
-    security_label = f"🚨 Security Alerts ({security_pending})" if security_pending else "보안 알림"
+    security_pending = get_unread_notification_count(["security_alert", "concurrent_login_attempt"])
+    security_label = f"🚨 Security Alerts ({security_pending})" if security_pending else "🚨 Security Alerts"
     pages.append(st.Page('webpages/pages/security_alerts.py', title=security_label))
-    pages.append(st.Page('webpages/pages/settings.py', title='🚫 Block Management'))
+    
+    pages.append(st.Page('webpages/pages/Block_Management.py', title='🚫 Block Management'))
     pages.append(st.Page('webpages/pages/audit_logs.py', title='📜 Audit Logs'))
 
 pg = st.navigation(pages)
