@@ -364,7 +364,13 @@ with left:
 
 
 with right:
-    st.title("🔐자동차단조건")
+    st.markdown(
+        """
+    <h1 style="font-size:28px; margin:0;">🔐자동차단조건</h1>
+    """,
+        unsafe_allow_html=True,
+    )
+    # st.title("🔐자동차단조건")
     if "score_value" not in st.session_state:
         row = load_condition()
 

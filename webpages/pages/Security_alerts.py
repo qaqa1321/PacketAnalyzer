@@ -2,7 +2,17 @@ import streamlit as st
 
 from webpages.login.accountdb import get_db
 
-st.title("🚨 보안 알림")
+from  webpages.css.st_header import _setting
+_setting()
+
+
+# st.title("🚨 보안 알림")
+st.markdown(
+    """
+<h1 style="font-size:28px; margin:0;">🚨 보안 알림</h1>
+""",
+    unsafe_allow_html=True,
+)
 
 if not st.session_state.get("logged_in") or st.session_state.user["role"] != "admin":
     st.error("관리자만 접근할 수 있습니다.")

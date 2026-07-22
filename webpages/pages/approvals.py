@@ -6,10 +6,20 @@ st.set_page_config(
     layout="wide"  # "centered"에서 "wide"로 변경하여 화면 가득 채움
 )
 
+from  webpages.css.st_header import _setting
+_setting()
+
+
 from webpages.login.accountdb import get_db, log_action
 from webpages.login.accountdb import get_pending_role_requests, resolve_role_request
+st.markdown(
+        """
+    <h1 style="font-size:28px; margin:0;">🔔 회원가입 및 권한 관리</h1>
+    """,
+        unsafe_allow_html=True,
+    )
 
-st.title("🔔 회원가입 및 권한 관리")
+# st.title("🔔 회원가입 및 권한 관리")
 
 # index.py의 로그인 게이트를 통과한 사용자만 이 코드까지 도달하지만,
 # 혹시 모를 상황(직접 접근 등)을 대비해 한 번 더 admin 권한 체크
@@ -38,7 +48,13 @@ left_col, right_col = st.columns(2)
 # [왼쪽] 회원가입 승인 관리
 # ====================================================
 with left_col:
-    st.header("👤 회원가입 승인 관리")
+    st.markdown(
+        """
+    <h2 style="font-size:24px; margin:0;">👤 회원가입 승인 관리</h1>
+    """,
+        unsafe_allow_html=True,
+    )
+    # st.header("👤 회원가입 승인 관리")
     
     if not pending_users:
         st.info("승인 대기중인 가입 신청이 없습니다.")
@@ -95,7 +111,13 @@ with left_col:
 # [오른쪽] 권한 변경 요청 관리
 # ====================================================
 with right_col:
-    st.header("🔑 권한 변경 요청 관리")
+    st.markdown(
+        """
+    <h2 style="font-size:24px; margin:0;">🔑 권한 변경 요청 관리</h1>
+    """,
+        unsafe_allow_html=True,
+    )
+    # st.header("🔑 권한 변경 요청 관리")
 
     if not requests:
         st.info("대기중인 권한 변경 요청이 없습니다.")

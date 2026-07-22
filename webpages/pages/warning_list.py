@@ -217,8 +217,12 @@ def confirm_block_dialog(row):
     if st.session_state.get("block_error"):
         st.error(st.session_state.block_error)
 
-
-st.title("경고 목록")
+st.markdown(
+    """
+<h1 style="font-size:28px; margin:0;">경고 목록</h1>
+""",
+    unsafe_allow_html=True,
+)
 
 refresh_count = None
 try:
