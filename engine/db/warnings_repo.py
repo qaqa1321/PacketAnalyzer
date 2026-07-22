@@ -61,15 +61,14 @@ class WarningRepo:
     
     def get_warning_counter(self, attack_type, ip):
         """
-        10초 이내에 마지막 경보가 일어난 경고를 검색해서 counter 반환
+        가장 최근 일치하는 경보의 counter 반환
         """
-        now = time.time()
         self.db.cursor.execute("""
                 SELECT counter from warnings
                 where src_ip = ? AND attack_type = ? 
                 order by id desc
                 limit 1
-            """, (ip, attack_type, now -10))
+            """, (ip, attack_type))
         row = self.db.cursor.fetchone()
         return row[0] if row else 0
     
