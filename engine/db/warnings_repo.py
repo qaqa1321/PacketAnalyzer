@@ -66,7 +66,9 @@ class WarningRepo:
         now = time.time()
         self.db.cursor.execute("""
                 SELECT counter from warnings
-                where src_ip = ? AND attack_type = ? AND last_timestamp >= ?
+                where src_ip = ? AND attack_type = ? 
+                order by id desc
+                limit 1
             """, (ip, attack_type, now -10))
         row = self.db.cursor.fetchone()
         return row[0] if row else 0

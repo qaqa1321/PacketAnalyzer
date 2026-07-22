@@ -19,7 +19,7 @@ class ScoreCalculator:
             score = self.calc_amplification(name, packet)
         elif "Hijacking".lower() in name.lower():
             score = self.calc_hijacking(name, packet)
-
+        
         if score > 10: score = 10
         elif score < 0 : score = 0
 
