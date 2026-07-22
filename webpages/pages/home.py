@@ -65,12 +65,10 @@ WHERE timestamp >= ?
 
 blocked_packets = pd.read_sql_query(
     """
-SELECT *
-FROM blocked_packets
-WHERE timestamp >= ?
+SELECT MAX(timestamp) AS last_blocked
+FROM blocked_packets;
 """,
     conn,
-    params=(start,),
 )
 
 warnings = pd.read_sql_query(
@@ -246,7 +244,7 @@ total_bytes = packets["packet_size"].sum()
 bps = (total_bytes * 8) / 60
 
 # 엔진 상태
-engine_status = "Running" if packets["timestamp"].max() + 5 > now or blocked_packets["timestamp"].max() + 5 > now else "Stopped"
+engine_status = "Running" if packets["timestamp"].max() + 5 > now or blocked_packets["last_blocked"] + 5 > now else "Stopped"
 
 col, col1, col2, col3 = st.columns(4)
 
