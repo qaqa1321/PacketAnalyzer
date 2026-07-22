@@ -92,7 +92,7 @@ def _ip_match(ip, cidr):
         return False
 
 
-def is_blocked(src_ip, dst_ip=None, chain="INPUT"):
+def is_blocked(src_ip, chain="INPUT"):
     """
     IP만 가지고 순서대로 규칙을 검사.
     첫 번째로 매치되는 규칙의 target을 기준으로 판단.
@@ -102,8 +102,6 @@ def is_blocked(src_ip, dst_ip=None, chain="INPUT"):
 
     for rule in rules:
         if not _ip_match(src_ip, rule["src"]):
-            continue
-        if dst_ip is not None and not _ip_match(dst_ip, rule["dst"]):
             continue
 
         # 여기까지 왔으면 이 규칙에 매치됨 -> 첫 매치이므로 바로 결정
