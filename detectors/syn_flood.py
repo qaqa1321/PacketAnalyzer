@@ -39,7 +39,7 @@ def detect(packet: PacketData, flow: Flow):
         if p.dst_ip == MY_IP ] # MY_IP로 들어오는 것만 카운트
     
     inbound_ack = [p for p in flow.get_recent_packets_by_flag(seconds=10, flag="A")
-        if p.dst_ip == MY_IP] # 내가 보내는 RST
+        if p.dst_ip == MY_IP] # 내가 보내는 ACK
     
     outbound_fin = [p for p in flow.get_recent_packets_by_flag(seconds=10, flag="F")
         if p.src_ip == MY_IP] # 내가 보내는 FIN

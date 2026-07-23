@@ -41,12 +41,10 @@ def detect(packet:  PacketData, flow: Flow):
         if p.src_ip == MY_IP ] # MY_IP로 들어오는 것만 카운트
      
     syn =  flow.get_recent_packets_by_flag(seconds=10, flag="S")
-    outbound_rst = [p for p in flow.get_recent_packets_by_flag(seconds=10, flag="S")
-        if p.src_ip == MY_IP] # 내가 보내는 RST
+    
 
     fin_count = len(inbound_fin)
     out_fin_count = len(outbound_fin)
-    rst_count = len(outbound_rst)
     syn_count = len(syn)
 
     if packet_count == 0:
@@ -56,7 +54,6 @@ def detect(packet:  PacketData, flow: Flow):
         return (False, "")
     
     fin_ratio = fin_count / packet_count
-    rst_ratio = rst_count / fin_count
     syn_ratio = syn_count / fin_count
     out_fin_ratio = out_fin_count / fin_count
     
